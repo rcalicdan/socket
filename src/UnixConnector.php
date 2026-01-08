@@ -18,17 +18,34 @@ final class UnixConnector implements ConnectorInterface
             $path = 'unix://' . $path;
         } elseif (!str_starts_with($path, 'unix://')) {
             throw new InvalidUriException(
-                message: \sprintf('Given URI "%s" is invalid (EINVAL)', $path),
-                code: \defined('SOCKET_EINVAL') ? SOCKET_EINVAL : (defined('PCNTL_EINVAL') ? PCNTL_EINVAL : 22)
+                \sprintf('Given URI "%s" is invalid (expected format: unix:///path/to/socket)', $path),
+                \defined('SOCKET_EINVAL') ? SOCKET_EINVAL : (\defined('PCNTL_EINVAL') ? PCNTL_EINVAL : 22)
             );
+        }
+
+        $socketPath = substr($path, 7);
+        
+        if (!file_exists($socketPath)) {
+            return Promise::rejected(new ConnectionFailedException(
+                \sprintf('Unix socket "%s" does not exist', $socketPath),
+                \defined('SOCKET_ENOENT') ? SOCKET_ENOENT : 2
+            ));
+        }
+
+        if (!is_readable($socketPath) || filetype($socketPath) !== 'socket') {
+            return Promise::rejected(new ConnectionFailedException(
+                \sprintf('Path "%s" is not a valid Unix domain socket', $socketPath),
+                \defined('SOCKET_ENOTSOCK') ? SOCKET_ENOTSOCK : 88
+            ));
         }
 
         $resource = @stream_socket_client($path, $errno, $errstr, 1.0);
 
         if ($resource === false) {
             return Promise::rejected(new ConnectionFailedException(
-                message: \sprintf('Unable to connect to unix domain socket "%s": %s', $path, $errstr),
-                code: $errno
+                
+                \sprintf('Unable to connect to unix domain socket "%s": %s', $socketPath, $errstr),
+                $errno
             ));
         }
 
