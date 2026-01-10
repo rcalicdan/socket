@@ -1,6 +1,7 @@
 <?php
 
 use Hibla\EventLoop\Loop;
+use Hibla\EventLoop\ValueObjects\StreamWatcher;
 
 uses()
     ->beforeEach(function () {
@@ -130,4 +131,66 @@ function generate_temp_cert(): string
     file_put_contents($certFile, $pem);
 
     return $certFile;
+}
+
+
+function create_async_tls_client(int $port, array &$clients, array $sslOptions = []): void
+{
+    $client = @stream_socket_client(
+        'tcp://127.0.0.1:' . $port,
+        $errno,
+        $errstr,
+        5,
+        STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT
+    );
+
+    if ($client === false) {
+        echo "TCP connect failed: $errstr\n";
+        return;
+    }
+
+    stream_set_blocking($client, false);
+    $clients[] = $client;
+
+    $defaultOptions = [
+        'verify_peer' => false,
+        'verify_peer_name' => false,
+        'allow_self_signed' => true,
+    ];
+    
+    $options = array_merge($defaultOptions, $sslOptions);
+    
+    foreach ($options as $key => $value) {
+        stream_context_set_option($client, 'ssl', $key, $value);
+    }
+
+    Loop::addTimer(0.1, function () use ($client) {
+        $watcherId = null;
+        
+        $enableCrypto = function () use ($client, &$watcherId) {
+            $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            
+            if ($result === true) {
+                if ($watcherId !== null) {
+                    Loop::removeStreamWatcher($watcherId);
+                }
+            } elseif ($result === false) {
+                if ($watcherId !== null) {
+                    Loop::removeStreamWatcher($watcherId);
+                }
+            }
+            // else: needs more I/O, watcher will retry
+        };
+        
+        // Try once immediately
+        $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+        
+        if ($result === 0) {
+            $watcherId = Loop::addStreamWatcher(
+                $client, 
+                $enableCrypto, 
+                StreamWatcher::TYPE_READ
+            );
+        }
+    });
 }
