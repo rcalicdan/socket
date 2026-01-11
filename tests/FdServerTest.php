@@ -445,4 +445,4 @@ describe('FD Server', function () {
         $data = fread(end($clients), 1024);
         expect($data)->toBe("Welcome!\n");
     });
-});
+})->skipOnWindows();

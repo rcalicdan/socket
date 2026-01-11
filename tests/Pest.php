@@ -8,7 +8,7 @@ uses()
         Loop::reset();
     })
     ->afterEach(function () {
-        Loop::forceStop();
+        Loop::stop();
         Loop::reset();
     })
     ->in(__DIR__)

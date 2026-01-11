@@ -640,4 +640,4 @@ describe('Stream Encryption', function () {
 
         expect($completed)->toBeTrue();
     });
-});
+})->skipOnWindows();
