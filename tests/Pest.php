@@ -8,7 +8,7 @@ uses()
         Loop::reset();
     })
     ->afterEach(function () {
-        Loop::stop();
+        Loop::forceStop();
         Loop::reset();
     })
     ->in(__DIR__)
@@ -69,14 +69,15 @@ function get_fd_from_socket(mixed $socket): int
     if ($stat === false) {
         throw new RuntimeException('Could not get socket file stats');
     }
-    
+
     $ino = (int) $stat['ino'];
 
-    set_error_handler(function() { /* suppress all errors */ });
-    
+    set_error_handler(function () { /* suppress all errors */
+    });
+
     try {
         $dir = scandir('/dev/fd');
-        
+
         if ($dir === false) {
             throw new RuntimeException('Cannot read /dev/fd directory');
         }
@@ -87,7 +88,7 @@ function get_fd_from_socket(mixed $socket): int
             }
 
             $fdStat = stat('/dev/fd/' . $file);
-            
+
             if ($fdStat !== false && isset($fdStat['ino']) && $fdStat['ino'] === $ino) {
                 return (int) $file;
             }
@@ -157,19 +158,19 @@ function create_async_tls_client(int $port, array &$clients, array $sslOptions =
         'verify_peer_name' => false,
         'allow_self_signed' => true,
     ];
-    
+
     $options = array_merge($defaultOptions, $sslOptions);
-    
+
     foreach ($options as $key => $value) {
         stream_context_set_option($client, 'ssl', $key, $value);
     }
 
     Loop::addTimer(0.1, function () use ($client) {
         $watcherId = null;
-        
+
         $enableCrypto = function () use ($client, &$watcherId) {
             $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-            
+
             if ($result === true) {
                 if ($watcherId !== null) {
                     Loop::removeStreamWatcher($watcherId);
@@ -181,14 +182,14 @@ function create_async_tls_client(int $port, array &$clients, array $sslOptions =
             }
             // else: needs more I/O, watcher will retry
         };
-        
+
         // Try once immediately
         $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-        
+
         if ($result === 0) {
             $watcherId = Loop::addStreamWatcher(
-                $client, 
-                $enableCrypto, 
+                $client,
+                $enableCrypto,
                 StreamWatcher::TYPE_READ
             );
         }
