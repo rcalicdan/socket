@@ -11,8 +11,14 @@ describe('Stream Encryption', function () {
     $client = null;
     $connection = null;
 
-    beforeEach(function () use (&$certFile) {
+   beforeEach(function () use (&$certFile) {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            test()->markTestSkipped('Skipped on Windows');
+        }
+
         $certFile = generate_temp_cert();
+
+        Loop::reset();
     });
 
     afterEach(function () use (&$certFile, &$server, &$client, &$connection) {
@@ -31,6 +37,9 @@ describe('Stream Encryption', function () {
         if ($certFile && file_exists($certFile)) {
             unlink($certFile);
         }
+
+        Loop::stop();
+        Loop::reset();
     });
 
     it('successfully enables encryption (Server Mode)', function () use (&$certFile, &$server, &$client, &$connection) {
@@ -640,4 +649,4 @@ describe('Stream Encryption', function () {
 
         expect($completed)->toBeTrue();
     });
-})->skipOnWindows();
+});

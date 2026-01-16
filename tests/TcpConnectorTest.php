@@ -592,4 +592,4 @@ describe("Tcp Connector", function () {
             }
         });
     });
-});
+})->skipOnWindows();

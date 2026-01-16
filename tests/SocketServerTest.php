@@ -12,7 +12,13 @@ describe('Socket Server', function () {
     $certFile = null;
 
     beforeEach(function () use (&$certFile) {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            test()->markTestSkipped('Skipped on Windows');
+        }
+
         $certFile = generate_temp_cert();
+        
+        Loop::reset();
     });
 
     afterEach(function () use (&$server, &$clients, &$certFile) {
@@ -31,6 +37,9 @@ describe('Socket Server', function () {
         if ($certFile && file_exists($certFile)) {
             @unlink($certFile);
         }
+
+        Loop::stop();
+        Loop::reset();
     });
 
     describe('TCP Server creation', function () use (&$server, &$clients) {

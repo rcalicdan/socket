@@ -82,7 +82,7 @@ final class DnsConnector implements ConnectorInterface
                             );
 
                             $e = new ConnectionFailedException(
-                                sprintf('Connection to %s failed: %s', $original, $message),
+                                \sprintf('Connection to %s failed: %s', $original, $message),
                                 $e->getCode(),
                                 $e
                             );

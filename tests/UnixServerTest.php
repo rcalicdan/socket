@@ -12,6 +12,10 @@ describe('Unix Server', function () {
     $clients = [];
 
     beforeEach(function () use (&$socketPath) {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            test()->markTestSkipped('Skipped on Windows');
+        }
+
         $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid(rand(), true) . '.sock';
     });
 

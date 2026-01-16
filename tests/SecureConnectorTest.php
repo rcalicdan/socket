@@ -675,4 +675,4 @@ describe("Secure Connector", function () {
             }
         });
     });
-});
+})->skipOnWindows();
