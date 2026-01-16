@@ -114,6 +114,7 @@ final class Connection extends EventEmitter implements ConnectionInterface
         if (!\is_resource($this->resource)) {
             return null;
         }
+
         return $this->parseAddress(\stream_socket_get_name($this->resource, false));
     }
 

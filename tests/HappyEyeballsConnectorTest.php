@@ -412,7 +412,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://cloudflare.com:80');
@@ -432,7 +432,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://google.com:80');
@@ -452,7 +452,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://ipv6.google.com:80');
@@ -473,7 +473,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 2.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://example.com:80');
@@ -493,7 +493,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://this-domain-definitely-does-not-exist-12345.com:80');
@@ -507,7 +507,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withNameservers(['1.1.1.1'])
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://1.1.1.1:80');
@@ -524,7 +524,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withNameservers(['2606:4700:4700::1111'])
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://[2606:4700:4700::1111]:80');
@@ -543,7 +543,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withCache()
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise1 = $connector->connect('tcp://cloudflare.com:80');
@@ -563,7 +563,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 0.001);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://google.com:80');
@@ -578,7 +578,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 10.0);
+        $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://google.com:80');

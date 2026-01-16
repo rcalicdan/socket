@@ -573,7 +573,7 @@ describe("Secure Connector", function () {
         });
 
         it('propagates TCP connection errors', function () {
-            $tcpConnector = new TcpConnector([], 0.1);
+            $tcpConnector = new TcpConnector([]);
             $secureConnector = new SecureConnector($tcpConnector);
 
             $promise = $secureConnector->connect('tls://192.0.2.1:443');

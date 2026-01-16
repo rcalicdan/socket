@@ -464,7 +464,7 @@ describe('DnsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
 
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
 
@@ -486,7 +486,7 @@ describe('DnsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
 
         $promise = $dnsConnector->connect('tcp://google.com:80');
@@ -506,7 +506,7 @@ describe('DnsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
 
         $promise = $dnsConnector->connect('tcp://this-domain-definitely-does-not-exist-12345.com:80');
@@ -520,7 +520,7 @@ describe('DnsConnector - Real Network Integration', function () {
             ->withNameservers(['1.1.1.1'])
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
 
         $promise = $dnsConnector->connect('tcp://1.1.1.1:80');
@@ -539,7 +539,7 @@ describe('DnsConnector - Real Network Integration', function () {
             ->withNameservers(['2606:4700:4700::1111', '2606:4700:4700::1001'])             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
 
         $promise = $dnsConnector->connect('tcp://ipv6.google.com:80');
@@ -563,7 +563,7 @@ describe('DnsConnector - Real Network Integration', function () {
             ->withCache()
             ->build();
 
-        $tcpConnector = new TcpConnector([], 5.0);
+        $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
 
         $promise1 = $dnsConnector->connect('tcp://cloudflare.com:80');
@@ -585,7 +585,7 @@ describe('DnsConnector - Real Network Integration', function () {
             ->withTimeout(5.0)
             ->build();
 
-        $tcpConnector = new TcpConnector([], 0.001);
+        $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
 
         $promise = $dnsConnector->connect('tcp://google.com:80');
