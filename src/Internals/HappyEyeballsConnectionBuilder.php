@@ -65,6 +65,8 @@ final class HappyEyeBallsConnectionBuilder
 
     private ?string $lastError4 = null;
 
+    private bool $isResolved = false;
+
     /** @var array<string, mixed> */
     private readonly array $parts;
 
@@ -88,13 +90,22 @@ final class HappyEyeBallsConnectionBuilder
 
         $lookupResolve = function (RecordType $type) use ($promise): \Closure {
             return function (array $ips) use ($type, $promise): void {
+                if ($this->isResolved) {
+                    return;
+                }
+
                 unset($this->resolverPromises[$type->value]);
                 $this->resolved[$type->value] = true;
 
                 $this->mixIpsIntoConnectQueue($ips);
 
-                // Start next connection attempt if not already scheduled
-                if ($this->nextAttemptTimerId === null && $this->connectQueue !== []) {
+                // Start next connection attempt if:
+                // 1. No timer is scheduled AND
+                // 2. We have IPs to try AND  
+                // 3. No connection attempts are currently running
+                if ($this->nextAttemptTimerId === null && 
+                    $this->connectQueue !== [] && 
+                    $this->connectionPromises === []) {
                     $this->check($promise);
                 }
             };
@@ -107,6 +118,10 @@ final class HappyEyeBallsConnectionBuilder
         // Start IPv4 (A) resolution with potential delay per RFC 8305
         $this->resolverPromises[RecordType::A->value] = $this->resolve(RecordType::A, $promise)
             ->then(function (array $ips) use ($promise): PromiseInterface|array {
+                if ($this->isResolved) {
+                    return [];
+                }
+
                 // Happy path: IPv6 resolved already or no IPv4 addresses
                 if ($this->resolved[RecordType::AAAA->value] || $ips === []) {
                     return $ips;
@@ -134,6 +149,10 @@ final class HappyEyeBallsConnectionBuilder
         return $this->resolver->resolveAll($this->host, $type)->then(
             null,
             function (\Throwable $e) use ($type, $rejectTarget): array {
+                if ($this->isResolved) {
+                    return [];
+                }
+
                 unset($this->resolverPromises[$type->value]);
                 $this->resolved[$type->value] = true;
 
@@ -146,13 +165,9 @@ final class HappyEyeBallsConnectionBuilder
                     $this->lastErrorFamily = 6;
                 }
 
-                // Cancel next attempt if no more IPs available
-                if ($this->nextAttemptTimerId !== null && $this->connectQueue === []) {
-                    $this->cancelNextAttempt();
-                }
-
                 // Reject if both resolved and no IPs found
                 if ($this->hasBeenResolved() && $this->ipsCount === 0) {
+                    $this->isResolved = true;
                     $rejectTarget->reject(new ConnectionFailedException(
                         $this->buildErrorMessage(),
                         0,
@@ -182,7 +197,7 @@ final class HappyEyeBallsConnectionBuilder
             self::RESOLUTION_DELAY,
             function () use ($delayedPromise, $ips, &$cancelled): void {
                 $this->resolutionDelayTimerId = null;
-                if (!$cancelled) {
+                if (!$cancelled && !$this->isResolved) {
                     $delayedPromise->resolve($ips);
                 }
             }
@@ -192,7 +207,7 @@ final class HappyEyeBallsConnectionBuilder
         $ipv6Promise = $this->resolverPromises[RecordType::AAAA->value] ?? null;
         if ($ipv6Promise !== null) {
             $ipv6Promise->then(function () use ($delayedPromise, $ips, &$cancelled): void {
-                if (!$cancelled && $this->resolutionDelayTimerId !== null) {
+                if (!$cancelled && !$this->isResolved && $this->resolutionDelayTimerId !== null) {
                     Loop::cancelTimer($this->resolutionDelayTimerId);
                     $this->resolutionDelayTimerId = null;
                     $delayedPromise->resolve($ips);
@@ -214,27 +229,38 @@ final class HappyEyeBallsConnectionBuilder
 
     /**
      * Check and start next connection attempt
+     * 
+     * Per RFC 8305 Section 5: Connection attempts are started with a fixed delay
+     * between them, regardless of whether previous attempts have failed.
      */
     private function check(Promise $promise): void
     {
-        if ($this->connectQueue === []) {
+        if ($this->isResolved || $this->connectQueue === []) {
             return;
         }
 
         $ip = array_shift($this->connectQueue);
 
-        // Start connection attempt
         $connectionPromise = $this->attemptConnection($ip);
         $index = \count($this->connectionPromises);
         $this->connectionPromises[$index] = $connectionPromise;
 
         $connectionPromise->then(
             function ($connection) use ($index, $promise): void {
+                if ($this->isResolved) {
+                    return;
+                }
+
                 unset($this->connectionPromises[$index]);
+                $this->isResolved = true;
                 $this->cleanUp();
                 $promise->resolve($connection);
             },
             function (\Throwable $e) use ($index, $ip, $promise): void {
+                if ($this->isResolved) {
+                    return;
+                }
+
                 unset($this->connectionPromises[$index]);
                 $this->failureCount++;
 
@@ -253,16 +279,15 @@ final class HappyEyeBallsConnectionBuilder
                     $this->lastErrorFamily = 6;
                 }
 
-                // Start next attempt immediately on error
-                if ($this->connectQueue !== []) {
-                    if ($this->nextAttemptTimerId !== null) {
-                        $this->cancelNextAttempt();
-                    }
-                    $this->check($promise);
-                }
+                // RFC 8305: Do NOT cancel timer on failure
+                // The timer continues running and will start the next attempt
+                // This is parallel racing, not serial fallback
 
-                // Reject if all attempts exhausted
-                if ($this->hasBeenResolved() && $this->ipsCount === $this->failureCount) {
+                // Only reject if all attempts exhausted
+                if ($this->hasBeenResolved() && 
+                    $this->ipsCount === $this->failureCount &&
+                    $this->connectQueue === []) {
+                    $this->isResolved = true;
                     $this->cleanUp();
                     $promise->reject(new ConnectionFailedException(
                         $this->buildErrorMessage(),
@@ -274,15 +299,16 @@ final class HappyEyeBallsConnectionBuilder
         );
 
         // Schedule next attempt per RFC 8305 Section 5
+        // Timer runs independently of connection success/failure
         if (
             $this->nextAttemptTimerId === null &&
-            ($this->connectQueue !== [] || !$this->hasBeenResolved())
+            (\count($this->connectQueue) > 0 || !$this->hasBeenResolved())
         ) {
             $this->nextAttemptTimerId = Loop::addTimer(
                 self::CONNECTION_ATTEMPT_DELAY,
                 function () use ($promise): void {
                     $this->nextAttemptTimerId = null;
-                    if ($this->connectQueue !== []) {
+                    if (!$this->isResolved && $this->connectQueue !== []) {
                         $this->check($promise);
                     }
                 }

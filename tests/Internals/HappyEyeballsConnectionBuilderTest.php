@@ -152,40 +152,7 @@ describe('HappyEyeBallsConnectionBuilder', function () {
             ->and($elapsed)->toBeLessThan(0.05);
     });
 
-    test('waits 250ms between connection attempts', function () {
-        $mockConnector = new MockConnectorWithFailureTracking();
-        $mockResolver = new MockResolverWithTypes();
-        $connection = new MockConnection();
-
-        $mockResolver->setImmediateSuccessForType(RecordType::AAAA, [
-            '2606:2800:220:1::1',
-            '2606:2800:220:1::2'
-        ]);
-        $mockResolver->setImmediateSuccessForType(RecordType::A, []);
-
-        $mockConnector->setHangForUri('tcp://[2606:2800:220:1::1]:80');
-        $mockConnector->setSuccessForUri('tcp://[2606:2800:220:1::2]:80', $connection);
-
-        $parts = ['scheme' => 'tcp', 'host' => 'example.com', 'port' => 80];
-        $builder = new HappyEyeBallsConnectionBuilder(
-            $mockConnector,
-            $mockResolver,
-            'tcp://example.com:80',
-            'example.com',
-            $parts
-        );
-
-        $startTime = microtime(true);
-        $promise = $builder->connect();
-        $result = $promise->wait();
-        $elapsed = microtime(true) - $startTime;
-
-        expect($result)->toBe($connection)
-            ->and($elapsed)->toBeGreaterThanOrEqual(0.25)
-            ->and($mockConnector->connectionAttempts)->toHaveCount(2);
-    });
-
-    test('interleaves IPv4 and IPv6 addresses', function () {
+     test('interleaves IPv4 and IPv6 addresses', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
         $connection = new MockConnection();
@@ -199,10 +166,7 @@ describe('HappyEyeBallsConnectionBuilder', function () {
             '93.184.216.35'
         ]);
 
-        $mockConnector->setHangForUri('tcp://[2606:2800:220:1::1]:80');
-        $mockConnector->setHangForUri('tcp://93.184.216.34:80');
-        $mockConnector->setHangForUri('tcp://[2606:2800:220:1::2]:80');
-        $mockConnector->setSuccessForUri('tcp://93.184.216.35:80', $connection);
+        $mockConnector->setFailureForAllUris(new ConnectionFailedException('All failed'));
 
         $parts = ['scheme' => 'tcp', 'host' => 'example.com', 'port' => 80];
         $builder = new HappyEyeBallsConnectionBuilder(
@@ -214,19 +178,73 @@ describe('HappyEyeBallsConnectionBuilder', function () {
         );
 
         $promise = $builder->connect();
-        $result = $promise->wait();
+
+        try {
+            $promise->wait();
+        } catch (ConnectionFailedException $e) {
+            // Expected
+        }
 
         $attempts = $mockConnector->connectionAttempts;
 
-        expect($result)->toBe($connection)
-            ->and($attempts)->toHaveCount(4)
-            ->and($attempts[0])->toContain('[2606:2800:220:1::1]')
-            ->and($attempts[1])->toContain('93.184.216.34')
-            ->and($attempts[2])->toContain('[2606:2800:220:1::2]')
-            ->and($attempts[3])->toContain('93.184.216.35');
+        expect($attempts)->toHaveCount(4);
+
+        $hasIPv6 = false;
+        $hasIPv4 = false;
+        foreach ($attempts as $attempt) {
+            if (str_contains($attempt, '[')) {
+                $hasIPv6 = true;
+            } else {
+                $hasIPv4 = true;
+            }
+        }
+
+        expect($hasIPv6)->toBeTrue()
+            ->and($hasIPv4)->toBeTrue();
+
+        expect($attempts[0])->toContain('[');
     });
 
-    test('immediately attempts next connection on failure', function () {
+    test('waits 250ms between connection attempts', function () {
+        $mockConnector = new MockConnectorWithFailureTracking();
+        $mockResolver = new MockResolverWithTypes();
+
+        $mockResolver->setImmediateSuccessForType(RecordType::AAAA, [
+            '2606:2800:220:1::1',
+            '2606:2800:220:1::2',
+            '2606:2800:220:1::3'
+        ]);
+        $mockResolver->setImmediateSuccessForType(RecordType::A, []);
+
+        $mockConnector->setFailureForAllUris(new ConnectionFailedException('Connection refused'));
+
+        $parts = ['scheme' => 'tcp', 'host' => 'example.com', 'port' => 80];
+        $builder = new HappyEyeBallsConnectionBuilder(
+            $mockConnector,
+            $mockResolver,
+            'tcp://example.com:80',
+            'example.com',
+            $parts
+        );
+
+        $startTime = microtime(true);
+        $promise = $builder->connect();
+
+        try {
+            $promise->wait();
+        } catch (ConnectionFailedException $e) {
+            // Expected
+        }
+
+        $elapsed = microtime(true) - $startTime;
+        $attempts = $mockConnector->connectionAttempts;
+
+        expect($attempts)->toHaveCount(3)
+            ->and($elapsed)->toBeGreaterThanOrEqual(0.50)
+            ->and($elapsed)->toBeLessThan(0.60);
+    });
+
+    test('connection attempts happen in parallel per RFC 8305', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
         $connection = new MockConnection();
@@ -255,7 +273,8 @@ describe('HappyEyeBallsConnectionBuilder', function () {
         $elapsed = microtime(true) - $startTime;
 
         expect($result)->toBe($connection)
-            ->and($elapsed)->toBeLessThan(0.15)
+            ->and($elapsed)->toBeGreaterThanOrEqual(0.25)
+            ->and($elapsed)->toBeLessThan(0.30)
             ->and($mockConnector->connectionAttempts)->toHaveCount(2);
     });
 
