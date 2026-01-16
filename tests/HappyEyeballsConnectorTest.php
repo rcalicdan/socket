@@ -269,7 +269,7 @@ describe('HappyEyeBallsConnector', function () {
         $mockConnector->setHang();
 
         $promise = $connector->connect('tcp://example.com:80');
-        
+
         usleep(100000);
 
         $promise->cancel();
@@ -406,15 +406,6 @@ describe('HappyEyeBallsConnector', function () {
 });
 
 describe('HappyEyeBallsConnector - Real Network Integration', function () {
-    beforeEach(function () {
-        $socket = @stream_socket_client('tcp://[2606:4700:4700::1111]:80', $errno, $errstr, 1);
-        if ($socket === false) {
-            $this->markTestSkipped('IPv6 is not available in this environment');
-        } else {
-            fclose($socket);
-        }
-    });
-
     test('connects to cloudflare.com using Happy Eyeballs', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1', '1.0.0.1'])
@@ -471,7 +462,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->toBeInstanceOf(ConnectionInterface::class);
 
         $remoteAddr = $connection->getRemoteAddress();
-        expect($remoteAddr)->toContain('['); 
+        expect($remoteAddr)->toContain('[');
 
         $connection->close();
     });
@@ -598,4 +589,14 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
 
         expect($promise->isCancelled())->toBeTrue();
     });
+})->skip(function () {
+    set_error_handler(fn() => true);
+    $socket = @stream_socket_client('tcp://[2606:4700:4700::1111]:80', $errno, $errstr, 1);
+    restore_error_handler();
+
+    if ($socket === false) {
+        return 'IPv6 is not available in this environment';
+    }
+    fclose($socket);
+    return false;
 })->skipOnCI();
