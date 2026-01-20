@@ -15,6 +15,20 @@ use Hibla\Socket\Internals\StreamEncryption;
 use Throwable;
 use UnexpectedValueException;
 
+/**
+ * A connector that establishes secure, encrypted (TLS/SSL) connections.
+ *
+ * This class acts as a decorator for another {@see ConnectorInterface} (typically a TcpConnector).
+ * It orchestrates the connection process by:
+ * 1. Delegating the initial transport establishment to the underlying connector (e.g., TCP).
+ * 2. Performing an asynchronous TLS handshake ("upgrading" the stream) immediately after connection.
+ *
+ * It supports standard PHP SSL context options (passed via the constructor) to configure
+ * security parameters such as certificate authorities, peer verification, and specific
+ * TLS versions.
+ *
+ * @see https://www.php.net/manual/en/context.ssl.php For a list of available SSL context options.
+ */
 final class SecureConnector implements ConnectorInterface
 {
     private readonly StreamEncryption $streamEncryption;
@@ -26,6 +40,9 @@ final class SecureConnector implements ConnectorInterface
         $this->streamEncryption = new StreamEncryption(isServer: false);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function connect(string $uri): PromiseInterface
     {
         if (!str_contains($uri, '://')) {

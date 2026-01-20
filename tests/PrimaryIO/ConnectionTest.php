@@ -22,7 +22,7 @@ describe('Connection', function () {
     });
 
     it('implements ConnectionInterface', function () {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $connection = new Connection($server);
 
         expect($connection)->toBeInstanceOf(ConnectionInterface::class);
@@ -32,7 +32,7 @@ describe('Connection', function () {
     });
 
     it('is readable by default', function () {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $connection = new Connection($server);
 
         expect($connection->isReadable())->toBeTrue();
@@ -42,7 +42,7 @@ describe('Connection', function () {
     });
 
     it('is writable by default', function () {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $connection = new Connection($server);
 
         expect($connection->isWritable())->toBeTrue();
@@ -52,7 +52,7 @@ describe('Connection', function () {
     });
 
     it('gets remote address for TCP connection', function () {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $connection = new Connection($server);
 
         $remoteAddress = $connection->getRemoteAddress();
@@ -66,7 +66,7 @@ describe('Connection', function () {
     });
 
     it('gets local address for TCP connection', function () {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $connection = new Connection($server);
 
         $localAddress = $connection->getLocalAddress();
@@ -101,7 +101,7 @@ describe('Connection', function () {
     });
 
     it('emits data event when receiving data', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
         $dataReceived = null;
 
@@ -113,31 +113,36 @@ describe('Connection', function () {
         stream_set_blocking($client, false);
         fwrite($client, "Hello Connection\n");
 
-        $timeout = Loop::addTimer(1.0, fn() => Loop::stop());
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(1.0);
 
         expect($dataReceived)->toBe("Hello Connection\n");
     });
 
     it('can write data back', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
 
         $serverConnection->write("Server says hello\n");
-
         stream_set_blocking($client, false);
 
-        $timeout = Loop::addTimer(0.1, fn() => Loop::stop());
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        $receivedData = '';
+        $watcherId = null;
+        
+        $watcherId = Loop::addReadWatcher($client, function () use ($client, &$receivedData, &$watcherId) {
+            $receivedData = fread($client, 1024);
+            if ($watcherId) {
+                Loop::removeReadWatcher($watcherId);
+            }
+            Loop::stop();
+        });
 
-        $data = fread($client, 1024);
-        expect($data)->toBe("Server says hello\n");
+        run_with_timeout(1.0);
+
+        expect($receivedData)->toBe("Server says hello\n");
     });
 
     it('returns true when write succeeds', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
 
         $result = $serverConnection->write("test");
@@ -146,7 +151,7 @@ describe('Connection', function () {
     });
 
     it('emits end event when connection closes', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
         $endReceived = false;
 
@@ -159,15 +164,13 @@ describe('Connection', function () {
             fclose($client);
         });
 
-        $timeout = Loop::addTimer(1.0, fn() => Loop::stop());
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(1.0);
 
         expect($endReceived)->toBeTrue();
     });
 
     it('emits close event when closed', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
         $closeReceived = false;
 
@@ -183,7 +186,7 @@ describe('Connection', function () {
     });
 
     it('can be paused and resumed', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
         $dataCount = 0;
 
@@ -196,25 +199,24 @@ describe('Connection', function () {
         stream_set_blocking($client, false);
         fwrite($client, "Message 1\n");
 
-        $timeout = Loop::addTimer(0.1, function () use ($serverConnection, &$client, &$dataCount) {
+        Loop::addTimer(0.1, function () use ($serverConnection, &$client, &$dataCount) {
             expect($dataCount)->toBe(0);
             $serverConnection->resume();
             fwrite($client, "Message 2\n");
+            
+            Loop::addTimer(0.1, fn() => Loop::stop());
         });
 
-        $timeout2 = Loop::addTimer(0.3, fn() => Loop::stop());
-        Loop::run();
-        Loop::cancelTimer($timeout);
-        Loop::cancelTimer($timeout2);
+        run_with_timeout(1.0);
 
         expect($dataCount)->toBeGreaterThan(0);
     });
 
     it('can pipe to another writable stream', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
 
-        [$client2, $server2] = createSocketPair();
+        [$client2, $server2] = creat_socket_pair();
         $destination = new Connection($server2);
 
         $result = $serverConnection->pipe($destination);
@@ -228,7 +230,7 @@ describe('Connection', function () {
     });
 
     it('ends connection with optional data', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
         $closeReceived = false;
 
@@ -241,9 +243,7 @@ describe('Connection', function () {
 
         stream_set_blocking($client, false);
 
-        $timeout = Loop::addTimer(0.1, fn() => Loop::stop());
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(1.0);
 
         $data = fread($client, 1024);
 
@@ -254,7 +254,7 @@ describe('Connection', function () {
     });
 
     it('is not readable after close', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
 
         $serverConnection->close();
@@ -265,7 +265,7 @@ describe('Connection', function () {
     });
 
     it('is not writable after close', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
 
         $serverConnection->close();
@@ -276,7 +276,7 @@ describe('Connection', function () {
     });
 
     it('returns null for addresses after close', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
 
         $serverConnection->close();
@@ -311,13 +311,17 @@ describe('Connection', function () {
     })->skipOnWindows();
 
     it('handles bidirectional communication', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
         $receivedData = [];
 
         $serverConnection->on('data', function ($data) use (&$receivedData, $serverConnection) {
             $receivedData[] = $data;
             $serverConnection->write("Echo: " . $data);
+            
+            if (count($receivedData) >= 2) {
+                 Loop::addTimer(0.01, fn() => Loop::stop());
+            }
         });
 
         stream_set_blocking($client, false);
@@ -330,9 +334,7 @@ describe('Connection', function () {
             fwrite($client, "Message 2\n");
         });
 
-        $timeout = Loop::addTimer(0.3, fn() => Loop::stop());
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(1.0);
 
         $response = '';
         while ($chunk = fread($client, 1024)) {
@@ -345,26 +347,30 @@ describe('Connection', function () {
     });
 
     it('emits drain event when write buffer empties', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
         $drainEmitted = false;
 
         $serverConnection->on('drain', function () use (&$drainEmitted) {
             $drainEmitted = true;
+            Loop::stop();
         });
 
         $largeData = str_repeat('x', 100000);
         $serverConnection->write($largeData);
+        
+        Loop::addTimer(0.01, function() use ($client) {
+             stream_set_blocking($client, false);
+             fread($client, 8192);
+        });
 
-        $timeout = Loop::addTimer(0.5, fn() => Loop::stop());
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(1.0);
 
         expect($drainEmitted)->toBeIn([true, false]);
     });
 
     it('handles multiple small writes', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
 
         for ($i = 0; $i < 10; $i++) {
@@ -373,21 +379,29 @@ describe('Connection', function () {
 
         stream_set_blocking($client, false);
 
-        $timeout = Loop::addTimer(0.2, fn() => Loop::stop());
-        Loop::run();
-        Loop::cancelTimer($timeout);
-
         $received = '';
-        while ($chunk = fread($client, 1024)) {
+        $watcherId = null;
+
+        $watcherId = Loop::addReadWatcher($client, function () use ($client, &$received, &$watcherId) {
+            $chunk = fread($client, 1024);
             $received .= $chunk;
-        }
+            
+            if (str_contains($received, "Line 9\n")) {
+                if ($watcherId) {
+                    Loop::removeReadWatcher($watcherId);
+                }
+                Loop::stop();
+            }
+        });
+
+        run_with_timeout(1.0);
 
         expect($received)->toContain("Line 0\n")
             ->and($received)->toContain("Line 9\n");
     });
 
     it('close is idempotent', function () use (&$client, &$serverConnection) {
-        [$client, $server] = createSocketPair();
+        [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
         $closeCount = 0;
 

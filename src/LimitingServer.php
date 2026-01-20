@@ -10,9 +10,24 @@ use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Socket\Interfaces\ServerInterface;
 use Throwable;
 
+/**
+ * A server decorator that enforces a limit on the number of concurrent connections.
+ *
+ * This class wraps an existing {@see ServerInterface} instance and intercepts incoming
+ * connections to track the count of active sessions. It is designed to protect the
+ * application from resource exhaustion or to enforce concurrency limits.
+ *
+ * Depending on configuration, it operates in one of two modes when the limit is reached:
+ * 1. **Pause Mode (Backpressure):** The underlying server is paused, stopping the acceptance
+ *    of new connections at the socket level. It resumes automatically when a slot becomes available.
+ * 2. **Rejection Mode:** New connections are accepted but immediately closed (and an error
+ *    may be emitted), effectively dropping the client.
+ */
 final class LimitingServer extends EventEmitter implements ServerInterface
 {
-    /** @var array<int, ConnectionInterface> */
+    /**
+     *  @var array<int, ConnectionInterface> 
+     */
     private array $connections = [];
 
     private bool $pauseOnLimit = false;
@@ -39,16 +54,17 @@ final class LimitingServer extends EventEmitter implements ServerInterface
         $this->server->on('error', $this->handleError(...));
     }
 
-    public function getConnections(): array
-    {
-        return $this->connections;
-    }
-
+    /**
+     * {@inheritDoc}
+     */
     public function getAddress(): ?string
     {
         return $this->server->getAddress();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function pause(): void
     {
         if (!$this->manuPaused) {
@@ -60,6 +76,9 @@ final class LimitingServer extends EventEmitter implements ServerInterface
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function resume(): void
     {
         if ($this->manuPaused) {
@@ -71,6 +90,9 @@ final class LimitingServer extends EventEmitter implements ServerInterface
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function close(): void
     {
         $this->server->close();
@@ -88,7 +110,7 @@ final class LimitingServer extends EventEmitter implements ServerInterface
         }
 
         $this->connections[] = $connection;
-        
+
         $connection->on('close', function () use ($connection): void {
             $this->handleDisconnection($connection);
         });
@@ -121,7 +143,7 @@ final class LimitingServer extends EventEmitter implements ServerInterface
             }
         }
     }
-    
+
     private function handleError(Throwable $error): void
     {
         $this->emit('error', [$error]);

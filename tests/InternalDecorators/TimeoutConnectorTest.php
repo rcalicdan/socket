@@ -126,7 +126,6 @@ describe('TimeoutConnector', function () {
         $timeoutConnector = new TimeoutConnector($mockConnector, 1.0);
         $connection = new MockConnection();
 
-        // Set to succeed just before the timeout (0.95 seconds vs 1.0 timeout)
         $mockConnector->setSuccessAfter(0.95, $connection);
 
         $promise = $timeoutConnector->connect('tcp://example.com:80');
@@ -218,7 +217,6 @@ describe('TimeoutConnector', function () {
         expect(fn() => $promise->wait())
             ->toThrow(TimeoutException::class);
 
-        // The underlying connector's promise should have been cancelled
         expect($mockConnector->connectCalled)->toBeTrue();
     });
 

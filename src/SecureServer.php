@@ -21,6 +21,10 @@ use Throwable;
 final class SecureServer extends EventEmitter implements ServerInterface
 {
     private readonly StreamEncryption $encryption;
+
+    /**
+     * @var array<int,mixed>
+     */
     private readonly array $context;
 
     /**
@@ -40,6 +44,9 @@ final class SecureServer extends EventEmitter implements ServerInterface
         $this->server->on('connection', $this->handleConnection(...));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function getAddress(): ?string
     {
         $address = $this->server->getAddress();
@@ -51,16 +58,25 @@ final class SecureServer extends EventEmitter implements ServerInterface
         return str_replace('tcp://', 'tls://', $address);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function pause(): void
     {
         $this->server->pause();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function resume(): void
     {
         $this->server->resume();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function close(): void
     {
         $this->server->close();

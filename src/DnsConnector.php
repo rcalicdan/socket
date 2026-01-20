@@ -11,6 +11,17 @@ use Hibla\Socket\Exceptions\ConnectionFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
 use Hibla\Socket\Interfaces\ConnectorInterface;
 
+/**
+ * A connector that transparently resolves hostnames to IP addresses.
+ *
+ * This class acts as a decorator for another {@see ConnectorInterface} (typically a TcpConnector).
+ * It intercepts the connection request, extracts the hostname from the URI, and performs
+ * an asynchronous DNS lookup. Once the hostname is resolved to an IP address, it
+ * delegates the actual connection establishment to the underlying connector using the
+ * resolved IP.
+ *
+ * If the URI already contains a valid IP address, DNS resolution is skipped.
+ */
 final class DnsConnector implements ConnectorInterface
 {
     public function __construct(

@@ -1,25 +1,25 @@
 <?php
 
 use Hibla\EventLoop\Loop;
-use Hibla\Socket\Exceptions\ConnectionFailedException;
+use Hibla\Socket\Exceptions\EncryptionFailedException;
 use Hibla\Socket\Interfaces\ConnectionInterface;
-use Hibla\Socket\LimitingServer;
-use Hibla\Socket\SocketServer;
+use Hibla\Socket\SecureServer;
+use Hibla\Socket\TcpServer;
 
-describe('Limiting Server', function () {
+describe('Secure Server', function () {
     $server = null;
-    $limitingServer = null;
     $clients = [];
+    $certFile = null;
 
-    beforeEach(function () {
+    beforeEach(function () use (&$certFile) {
         if (DIRECTORY_SEPARATOR === '\\') {
             test()->markTestSkipped('Skipped on Windows');
         }
 
-        Loop::reset();
+        $certFile = generate_temp_cert();
     });
 
-    afterEach(function () use (&$server, &$limitingServer, &$clients) {
+    afterEach(function () use (&$server, &$clients, &$certFile) {
         foreach ($clients as $client) {
             if (is_resource($client)) {
                 @fclose($client);
@@ -27,690 +27,449 @@ describe('Limiting Server', function () {
         }
         $clients = [];
 
-        if ($limitingServer instanceof LimitingServer) {
-            $limitingServer->close();
-            $limitingServer = null;
-        }
-
-        if ($server instanceof SocketServer) {
+        if ($server instanceof SecureServer) {
             $server->close();
             $server = null;
         }
 
-        Loop::stop();
-        Loop::reset();
+        if ($certFile && file_exists($certFile)) {
+            @unlink($certFile);
+        }
     });
 
-    describe('Basic functionality', function () use (&$server, &$limitingServer, &$clients) {
-        it('constructs with a connection limit', function () use (&$server, &$limitingServer) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 5);
+    it('wraps a TCP server and returns TLS address', function () use (&$server, &$certFile) {
+        $port = get_free_port();
 
-            expect($limitingServer->getAddress())->toBe('tcp://127.0.0.1:' . $port);
-        });
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
 
-        it('constructs with null limit for unlimited connections', function () use (&$server, &$limitingServer) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, null);
+        $address = $server->getAddress();
 
-            expect($limitingServer->getAddress())->toBe('tcp://127.0.0.1:' . $port);
-        });
-
-        it('accepts connections up to the limit', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 3);
-            $connectionCount = 0;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
-                $connectionCount++;
-            });
-
-            for ($i = 0; $i < 3; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            $timeout = Loop::addTimer(0.2, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(3);
-        });
-
-        it('rejects connections exceeding the limit', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 2);
-            $connectionCount = 0;
-            $errorCount = 0;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
-                $connectionCount++;
-            });
-
-            $limitingServer->on('error', function ($error) use (&$errorCount) {
-                if ($error instanceof ConnectionFailedException) {
-                    $errorCount++;
-                }
-            });
-
-            for ($i = 0; $i < 4; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            $timeout = Loop::addTimer(0.2, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(2)
-                ->and($errorCount)->toBe(2);
-        });
-
-        it('tracks active connections correctly', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 5);
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) {
-                // Just accept connections
-            });
-
-            for ($i = 0; $i < 3; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            $timeout = Loop::addTimer(0.2, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect(count($limitingServer->getConnections()))->toBe(3);
-        });
-
-        it('allows new connections after old ones close', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 2);
-            $connectionCount = 0;
-            $connections = [];
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount, &$connections) {
-                $connectionCount++;
-                $connections[] = $connection;
-            });
-
-            for ($i = 0; $i < 2; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            Loop::addTimer(0.1, function () use (&$clients) {
-                if (is_resource($clients[0])) {
-                    fclose($clients[0]);
-                }
-            });
-
-            Loop::addTimer(0.2, function () use (&$limitingServer, &$clients) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            });
-
-            $timeout = Loop::addTimer(0.5, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(3);
-        });
-
-        it('returns correct address from wrapped server', function () use (&$server, &$limitingServer) {
-            $port = get_free_port();
-            $server = new SocketServer('tcp://127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 10);
-
-            expect($limitingServer->getAddress())->toBe($server->getAddress());
-        });
+        expect($address)->toBe('tls://127.0.0.1:' . $port);
     });
 
-    describe('Pause on limit mode', function () use (&$server, &$limitingServer, &$clients) {
-        it('pauses accepting connections when limit is reached', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 2, pauseOnLimit: true);
-            $connectionCount = 0;
+    it('returns null address when underlying server is closed', function () use (&$server, &$certFile) {
+        $port = get_free_port();
 
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
-                $connectionCount++;
-            });
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
 
-            for ($i = 0; $i < 2; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
+        $server->close();
+        $address = $server->getAddress();
 
-            Loop::addTimer(0.1, function () use (&$limitingServer, &$clients) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            });
-
-            $timeout = Loop::addTimer(0.3, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(2);
-        });
-
-        it('resumes accepting after connection closes in pause mode', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 2, pauseOnLimit: true);
-            $connectionCount = 0;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
-                $connectionCount++;
-            });
-
-            for ($i = 0; $i < 2; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            Loop::addTimer(0.1, function () use (&$limitingServer, &$clients) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            });
-
-            Loop::addTimer(0.2, function () use (&$clients) {
-                if (is_resource($clients[0])) {
-                    fclose($clients[0]);
-                }
-            });
-
-            $timeout = Loop::addTimer(0.5, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(3);
-        });
-
-        it('does not emit error events in pause mode', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 2, pauseOnLimit: true);
-            $errorCount = 0;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) {
-                // Just accept
-            });
-
-            $limitingServer->on('error', function ($error) use (&$errorCount) {
-                $errorCount++;
-            });
-
-            for ($i = 0; $i < 3; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            $timeout = Loop::addTimer(0.3, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($errorCount)->toBe(0);
-        });
+        expect($address)->toBeNull();
     });
 
-    describe('Manual pause and resume', function () use (&$server, &$limitingServer, &$clients) {
-        it('pauses and resumes manually', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 10);
-            $connectionCount = 0;
+    it('accepts encrypted connection and emits connection event', function () use (&$server, &$clients, &$certFile) {
+        $port = get_free_port();
 
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
-                $connectionCount++;
-                Loop::stop();
-            });
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, ['local_cert' => $certFile]);
 
-            $limitingServer->pause();
+        $connectionReceived = null;
 
-            $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-
-            Loop::addTimer(0.1, function () use (&$connectionCount, &$limitingServer) {
-                expect($connectionCount)->toBe(0);
-                $limitingServer->resume();
-            });
-
-            $timeout = Loop::addTimer(0.5, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(1);
+        $server->on('connection', function (ConnectionInterface $connection) use (&$connectionReceived) {
+            $connectionReceived = $connection;
+            Loop::stop();
         });
 
-        it('handles manual pause with auto-pause from limit', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 2, pauseOnLimit: true);
-            $connectionCount = 0;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
-                $connectionCount++;
-            });
-
-            $limitingServer->pause();
-
-            $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-
-            Loop::addTimer(0.1, function () use (&$limitingServer) {
-                $limitingServer->resume();
-            });
-
-            $timeout = Loop::addTimer(0.3, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(1);
+        $server->on('error', function ($error) {
+            echo "Error: " . $error->getMessage() . "\n";
         });
 
-        it('handles multiple pause/resume cycles', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 10);
-
-            $limitingServer->pause();
-            $limitingServer->pause(); 
-            $limitingServer->resume();
-            $limitingServer->resume();
-
-            $connectionReceived = false;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionReceived) {
-                $connectionReceived = true;
-                Loop::stop();
-            });
-
-            $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-
-            $timeout = Loop::addTimer(0.5, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionReceived)->toBeTrue();
+        Loop::addTimer(0.05, function () use ($port, &$clients) {
+            create_async_tls_client($port, $clients);
         });
+
+        run_with_timeout(5.0);
+
+        expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
+            ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
     });
 
-    describe('Connection tracking', function () use (&$server, &$limitingServer, &$clients) {
-        it('removes connections from tracking when they close', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 5);
+    it('accepts multiple encrypted connections', function () use (&$server, &$clients, &$certFile) {
+        $port = get_free_port();
 
-            $limitingServer->on('connection', function (ConnectionInterface $connection) {
-                // Just accept
-            });
-            for ($i = 0; $i < 3; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
+
+        $connectionCount = 0;
+
+        $server->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
+            $connectionCount++;
+            if ($connectionCount === 3) {
+                Loop::stop();
             }
-
-            Loop::addTimer(0.1, function () use (&$limitingServer) {
-                expect(count($limitingServer->getConnections()))->toBe(3);
-            });
-
-            Loop::addTimer(0.2, function () use (&$clients) {
-                foreach ($clients as $client) {
-                    if (is_resource($client)) {
-                        fclose($client);
-                    }
-                }
-            });
-
-            Loop::addTimer(0.4, function () use (&$limitingServer) {
-                expect(count($limitingServer->getConnections()))->toBe(0);
-                Loop::stop();
-            });
-
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
         });
 
-        it('can iterate over active connections', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 5);
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) {
-                // Just accept
-            });
-
-            for ($i = 0; $i < 3; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            Loop::addTimer(0.2, function () use (&$limitingServer) {
-                $count = 0;
-                foreach ($limitingServer->getConnections() as $connection) {
-                    expect($connection)->toBeInstanceOf(ConnectionInterface::class);
-                    $count++;
-                }
-                expect($count)->toBe(3);
-                Loop::stop();
-            });
-
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+        $server->on('error', function ($error) {
+            echo "Error: " . $error->getMessage() . "\n";
         });
 
-        it('can broadcast to all active connections', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 5);
+        Loop::addTimer(0.05, function () use ($port, &$clients) {
+            create_async_tls_client($port, $clients);
+            create_async_tls_client($port, $clients);
+            create_async_tls_client($port, $clients);
+        });
 
-            $limitingServer->on('connection', function (ConnectionInterface $connection) {
-                // Just accept
+        run_with_timeout(5.0);
+
+        expect($connectionCount)->toBe(3);
+    });
+
+    it('pauses and resumes accepting connections', function () use (&$server, &$clients, &$certFile) {
+        $port = get_free_port();
+
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
+
+        $connectionCount = 0;
+
+        $server->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
+            $connectionCount++;
+            $connection->end();
+            Loop::stop();
+        });
+
+        $server->on('error', function ($error) {
+            echo "Error: " . $error->getMessage() . "\n";
+        });
+
+        $server->pause();
+
+        Loop::addTimer(0.05, function () use ($port, &$clients) {
+            create_async_tls_client($port, $clients);
+        });
+
+        Loop::addTimer(0.3, function () use ($server, &$connectionCount) {
+            expect($connectionCount)->toBe(0);
+            $server->resume();
+        });
+
+        run_with_timeout(5.0);
+
+        expect($connectionCount)->toBe(1);
+    });
+
+    it('emits error when TLS handshake fails', function () use (&$server, &$clients, &$certFile) {
+        $port = get_free_port();
+
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
+
+        $errorReceived = null;
+
+        $server->on('error', function ($error) use (&$errorReceived) {
+            $errorReceived = $error;
+            Loop::stop();
+        });
+
+        $server->on('connection', function ($connection) {
+            echo "Unexpected connection received!\n";
+        });
+
+        Loop::addTimer(0.05, function () use ($port, &$clients) {
+            $client = @stream_socket_client(
+                'tcp://127.0.0.1:' . $port,
+                $errno,
+                $errstr,
+                5,
+                STREAM_CLIENT_CONNECT
+            );
+
+            if ($client !== false) {
+                $clients[] = $client;
+                fwrite($client, "plain text\n");
+            }
+        });
+
+        run_with_timeout(5.0);
+
+        expect($errorReceived)->toBeInstanceOf(EncryptionFailedException::class);
+    });
+
+    it('can send and receive encrypted data', function () use (&$server, &$clients, &$certFile) {
+        $port = get_free_port();
+
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
+
+        $dataReceived = null;
+        $clientData = null;
+
+        $server->on('connection', function (ConnectionInterface $connection) use (&$dataReceived) {
+            $connection->on('data', function ($data) use (&$dataReceived, $connection) {
+                $dataReceived = $data;
+                $connection->write("Echo: " . $data);
             });
+        });
 
-            for ($i = 0; $i < 3; $i++) {
-                $client = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-                if ($client !== false) {
-                    stream_set_blocking($client, false);
-                    $clients[] = $client;
-                }
+        $server->on('error', function ($error) {
+            echo "Error: " . $error->getMessage() . "\n";
+        });
+
+        Loop::addTimer(0.05, function () use ($port, &$clients, &$clientData) {
+            $client = @stream_socket_client(
+                'tcp://127.0.0.1:' . $port,
+                $errno,
+                $errstr,
+                5,
+                STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT
+            );
+
+            if ($client === false) {
+                return;
             }
 
-            Loop::addTimer(0.2, function () use (&$limitingServer) {
-                foreach ($limitingServer->getConnections() as $connection) {
-                    $connection->write("Hello!\n");
-                }
-            });
+            stream_set_blocking($client, false);
+            $clients[] = $client;
 
-            Loop::addTimer(0.4, function () use (&$clients) {
-                $receivedCount = 0;
-                foreach ($clients as $client) {
-                    if (is_resource($client)) {
-                        $data = fread($client, 1024);
-                        if ($data === "Hello!\n") {
-                            $receivedCount++;
+            stream_context_set_option($client, 'ssl', 'verify_peer', false);
+            stream_context_set_option($client, 'ssl', 'verify_peer_name', false);
+            stream_context_set_option($client, 'ssl', 'allow_self_signed', true);
+
+            Loop::addTimer(0.1, function () use ($client, &$clientData) {
+                $watcherId = null;
+                $handshakeComplete = false;
+
+                $enableCrypto = function () use ($client, &$watcherId, &$handshakeComplete, &$clientData) {
+                    $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+
+                    if ($result === true) {
+                        if ($watcherId !== null) {
+                            Loop::removeReadWatcher($watcherId);
+                        }
+                        $handshakeComplete = true;
+
+                        fwrite($client, "Hello Secure World\n");
+
+                        Loop::addTimer(0.5, function () use ($client, &$clientData) {
+                            $clientData = @fread($client, 1024);
+                            Loop::stop();
+                        });
+                    } elseif ($result === false) {
+                        if ($watcherId !== null) {
+                            Loop::removeReadWatcher($watcherId);
                         }
                     }
-                }
-                expect($receivedCount)->toBe(3);
-                Loop::stop();
-            });
+                };
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
+                $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
 
-            Loop::run();
-            Loop::cancelTimer($timeout);
-        });
-    });
-
-    describe('Error handling', function () use (&$server, &$limitingServer, &$clients) {
-        it('emits ConnectionFailedException when limit exceeded', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 1);
-            $errorReceived = null;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) {
-                // Just accept
-            });
-
-            $limitingServer->on('error', function ($error) use (&$errorReceived) {
-                $errorReceived = $error;
-            });
-
-            $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-
-            $timeout = Loop::addTimer(0.2, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($errorReceived)->toBeInstanceOf(ConnectionFailedException::class)
-                ->and($errorReceived->getMessage())->toContain('connection limit');
-        });
-
-        it('forwards errors from underlying server', function () use (&$server, &$limitingServer) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 10);
-            $errorReceived = null;
-
-            $limitingServer->on('error', function ($error) use (&$errorReceived) {
-                $errorReceived = $error;
-            });
-
-            (function () {
-                $this->server->emit('error', [new RuntimeException('Test error')]);
-            })->call($limitingServer);
-
-            expect($errorReceived)->toBeInstanceOf(RuntimeException::class)
-                ->and($errorReceived->getMessage())->toBe('Test error');
-        });
-    });
-
-    describe('Server operations', function () use (&$server, &$limitingServer, &$clients) {
-        it('closes the server and stops listening', function () use (&$server, &$limitingServer) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 10);
-
-            expect($limitingServer->getAddress())->not->toBeNull();
-
-            $limitingServer->close();
-
-            expect($limitingServer->getAddress())->toBeNull();
-        });
-
-        it('returns null address after close', function () use (&$server, &$limitingServer) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 5);
-
-            $limitingServer->close();
-
-            expect($limitingServer->getAddress())->toBeNull();
-        });
-
-        it('handles close after close (idempotent)', function () use (&$server, &$limitingServer) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 5);
-
-            $limitingServer->close();
-            $limitingServer->close();
-            $limitingServer->close();
-
-            expect($limitingServer->getAddress())->toBeNull();
-        });
-    });
-
-    describe('Stress testing', function () use (&$server, &$limitingServer, &$clients) {
-        it('handles rapid connections at limit', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 5);
-            $connectionCount = 0;
-            $errorCount = 0;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
-                $connectionCount++;
-            });
-
-            $limitingServer->on('error', function ($error) use (&$errorCount) {
-                if ($error instanceof ConnectionFailedException) {
-                    $errorCount++;
+                if ($result === 0) {
+                    $watcherId = Loop::addReadWatcher(
+                        $client,
+                        $enableCrypto
+                    );
+                } elseif ($result === true) {
+                    $enableCrypto();
                 }
             });
-
-            for ($i = 0; $i < 20; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            $timeout = Loop::addTimer(0.5, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(5)
-                ->and($errorCount)->toBe(15);
         });
 
-        it('maintains stability with rapid connect/disconnect cycles', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, 3);
-            $totalConnections = 0;
+        run_with_timeout(5.0);
 
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$totalConnections) {
-                $totalConnections++;
-            });
-
-            for ($i = 0; $i < 10; $i++) {
-                Loop::addTimer(0.05 * $i, function () use (&$limitingServer, &$clients) {
-                    $client = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-                    if ($client !== false) {
-                        $clients[] = $client;
-                    }
-                });
-
-                Loop::addTimer(0.05 * $i + 0.02, function () use (&$clients) {
-                    if (!empty($clients)) {
-                        $client = array_pop($clients);
-                        if (is_resource($client)) {
-                            fclose($client);
-                        }
-                    }
-                });
-            }
-
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($totalConnections)->toBeGreaterThan(0);
-        });
+        expect($dataReceived)->toBe("Hello Secure World\n")
+            ->and($clientData)->toBe("Echo: Hello Secure World\n");
     });
 
-    describe('Null limit behavior', function () use (&$server, &$limitingServer, &$clients) {
-        it('accepts unlimited connections with null limit', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, null);
-            $connectionCount = 0;
+    it('closes server and underlying TCP server', function () use (&$server, &$certFile) {
+        $port = get_free_port();
 
-            $limitingServer->on('connection', function (ConnectionInterface $connection) use (&$connectionCount) {
-                $connectionCount++;
-            });
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
 
-            for ($i = 0; $i < 20; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
+        $address1 = $server->getAddress();
+        expect($address1)->not->toBeNull();
 
-            $timeout = Loop::addTimer(0.5, function () {
+        $server->close();
+
+        $address2 = $server->getAddress();
+        $address3 = $tcpServer->getAddress();
+
+        expect($address2)->toBeNull()
+            ->and($address3)->toBeNull();
+    });
+
+    it('handles connection close event', function () use (&$server, &$clients, &$certFile) {
+        $port = get_free_port();
+
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
+
+        $closed = false;
+
+        $server->on('connection', function (ConnectionInterface $connection) use (&$closed) {
+            $connection->on('close', function () use (&$closed) {
+                $closed = true;
                 Loop::stop();
             });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($connectionCount)->toBe(20);
         });
 
-        it('does not emit errors with null limit', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, null);
-            $errorCount = 0;
-
-            $limitingServer->on('connection', function (ConnectionInterface $connection) {
-                // Just accept
-            });
-
-            $limitingServer->on('error', function ($error) use (&$errorCount) {
-                $errorCount++;
-            });
-
-            for ($i = 0; $i < 15; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
-            }
-
-            $timeout = Loop::addTimer(0.5, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            expect($errorCount)->toBe(0);
+        $server->on('error', function ($error) {
+            echo "Error: " . $error->getMessage() . "\n";
         });
 
-        it('tracks all connections with null limit', function () use (&$server, &$limitingServer, &$clients) {
-            $port = get_free_port();
-            $server = new SocketServer('127.0.0.1:' . $port);
-            $limitingServer = new LimitingServer($server, null);
+        $clientRef = null;
 
-            $limitingServer->on('connection', function (ConnectionInterface $connection) {
-                // Just accept
-            });
+        Loop::addTimer(0.05, function () use ($port, &$clients, &$clientRef) {
+            $client = @stream_socket_client(
+                'tcp://127.0.0.1:' . $port,
+                $errno,
+                $errstr,
+                5,
+                STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT
+            );
 
-            for ($i = 0; $i < 10; $i++) {
-                $clients[] = @stream_socket_client($limitingServer->getAddress(), $errno, $errstr, 1);
+            if ($client === false) {
+                return;
             }
 
-            Loop::addTimer(0.2, function () use (&$limitingServer) {
-                expect(count($limitingServer->getConnections()))->toBe(10);
-                Loop::stop();
-            });
+            stream_set_blocking($client, false);
+            $clients[] = $client;
+            $clientRef = $client;
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
+            stream_context_set_option($client, 'ssl', 'verify_peer', false);
+            stream_context_set_option($client, 'ssl', 'verify_peer_name', false);
+            stream_context_set_option($client, 'ssl', 'allow_self_signed', true);
 
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            Loop::addTimer(0.1, function () use ($client) {
+                $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+
+                if ($result === 0) {
+                    Loop::addReadWatcher(
+                        $client,
+                        function () use ($client) {
+                            @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+                        },
+                    );
+                }
+            });
         });
+
+        Loop::addTimer(0.5, function () use (&$clientRef) {
+            if (is_resource($clientRef)) {
+                fclose($clientRef);
+            }
+        });
+
+        run_with_timeout(20.0);
+
+        expect($closed)->toBe(true);
+    });
+
+    it('supports custom SSL context options', function () use (&$server, &$certFile) {
+        $port = get_free_port();
+
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+            'verify_peer' => false,
+            'verify_peer_name' => false,
+        ]);
+
+        $address = $server->getAddress();
+
+        expect($address)->toBe('tls://127.0.0.1:' . $port);
+    });
+
+    it('handles IPv6 addresses', function () use (&$server, &$clients, &$certFile) {
+        $socket = @stream_socket_server('tcp://[::1]:0');
+        if ($socket === false) {
+            test()->skip('IPv6 is not supported on this system.');
+        }
+        $address = stream_socket_get_name($socket, false);
+        fclose($socket);
+        $port = parse_url('tcp://' . $address, PHP_URL_PORT);
+
+        $tcpServer = new TcpServer('[::1]:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
+
+        $connectionReceived = false;
+
+        $server->on('connection', function (ConnectionInterface $connection) use (&$connectionReceived) {
+            $connectionReceived = true;
+            Loop::stop();
+        });
+
+        $server->on('error', function ($error) {
+            echo "Error: " . $error->getMessage() . "\n";
+        });
+
+        Loop::addTimer(0.05, function () use ($port, &$clients) {
+            $client = @stream_socket_client(
+                'tcp://[::1]:' . $port,
+                $errno,
+                $errstr,
+                5,
+                STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT
+            );
+
+            if ($client === false) {
+                return;
+            }
+
+            stream_set_blocking($client, false);
+            $clients[] = $client;
+
+            stream_context_set_option($client, 'ssl', 'verify_peer', false);
+            stream_context_set_option($client, 'ssl', 'verify_peer_name', false);
+            stream_context_set_option($client, 'ssl', 'allow_self_signed', true);
+
+            Loop::addTimer(0.1, function () use ($client) {
+                $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+
+                if ($result === 0) {
+                    Loop::addReadWatcher(
+                        $client,
+                        function () use ($client) {
+                            @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+                        },
+                    );
+                }
+            });
+        });
+
+        run_with_timeout(5.0);
+
+        expect($connectionReceived)->toBeTrue();
+    });
+
+    it('emits error when base server emits error', function () use (&$server, &$certFile) {
+        $port = get_free_port();
+
+        $tcpServer = new TcpServer('127.0.0.1:' . $port);
+        $server = new SecureServer($tcpServer, [
+            'local_cert' => $certFile,
+        ]);
+
+        $errorReceived = null;
+
+        $server->on('error', function ($error) use (&$errorReceived) {
+            $errorReceived = $error;
+        });
+
+        $tcpServer->emit('error', [new RuntimeException('Test error')]);
+
+        expect($errorReceived)->toBeInstanceOf(RuntimeException::class)
+            ->and($errorReceived->getMessage())->toBe('Test error');
     });
 });

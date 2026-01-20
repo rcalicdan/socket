@@ -8,6 +8,17 @@ use Hibla\Promise\Interfaces\PromiseInterface;
 use Hibla\Socket\Interfaces\ConnectorInterface;
 use Hibla\Socket\Interfaces\ConnectionInterface;
 
+/**
+ * A connector that enforces connections to a specific, pre-defined URI.
+ *
+ * This implementation ignores the URI passed to the {@see connect()} method and
+ * always establishes a connection to the fixed URI configured during instantiation.
+ *
+ * This is particularly useful for scenarios such as:
+ * - Service aliasing (mapping a logical name to a specific endpoint).
+ * - Testing (redirecting all outgoing connections to a local mock server).
+ * - Forcing traffic through a specific gateway or tunnel.
+ */
 final readonly class FixedUriConnector implements ConnectorInterface
 {
     /**

@@ -12,13 +12,25 @@ use Hibla\Socket\Exceptions\InvalidUriException;
 use Hibla\Socket\Interfaces\ConnectorInterface;
 use Hibla\Socket\Interfaces\ConnectionInterface;
 
+/**
+ * A connector for establishing asynchronous, non-blocking TCP/IP streaming connections.
+ *
+ * This class implements the core logic for initiating a client connection to a remote
+ * host and port using the TCP protocol, typically via the `tcp://` URI scheme.
+ *
+ * It utilizes the event loop to manage the asynchronous connection attempt (the TCP handshake)
+ * and resolves the returned promise upon successful connection establishment.
+ */
 final class TcpConnector implements ConnectorInterface
 {
     public function __construct(
         private readonly array $context = []
-    ) {
-    }
+    ) {}
 
+
+    /**
+     * {@inheritDoc}
+     */
     public function connect(string $uri): PromiseInterface
     {
         if (!str_contains($uri, '://')) {
@@ -40,12 +52,12 @@ final class TcpConnector implements ConnectorInterface
         }
 
         $context = ['socket' => $this->context];
-        
+
         $args = [];
         if (isset($parts['query'])) {
             parse_str($parts['query'], $args);
         }
-        
+
         if (isset($args['hostname'])) {
             $context['ssl'] = [
                 'SNI_enabled' => true,
@@ -95,10 +107,10 @@ final class TcpConnector implements ConnectorInterface
 
         $watcherCallback = function () use ($stream, $promise, $cleanup, $uri): void {
             $cleanup();
-            
+
             if (stream_socket_get_name($stream, true) === false) {
                 [$errno, $errstr] = $this->detectConnectionError($stream);
-                
+
                 @fclose($stream);
                 $promise->reject(new ConnectionFailedException(
                     \sprintf('Connection to %s failed: %s', $uri, $errstr),
@@ -108,7 +120,7 @@ final class TcpConnector implements ConnectorInterface
                 $promise->resolve(new Connection($stream));
             }
         };
-        
+
         $watcherId = Loop::addWriteWatcher(
             stream: $stream,
             callback: $watcherCallback
@@ -133,15 +145,15 @@ final class TcpConnector implements ConnectorInterface
     {
         $errno = 0;
         $errstr = 'Connection refused';
-        
+
         if (function_exists('socket_import_stream')) {
             $socket = socket_import_stream($stream);
             $errno = socket_get_option($socket, SOL_SOCKET, SO_ERROR);
             $errstr = socket_strerror($errno);
-            
+
             return [$errno, $errstr];
         }
-        
+
         if (PHP_OS_FAMILY === 'Linux') {
             set_error_handler(static function (int $_, string $error) use (&$errno, &$errstr): bool {
                 if (preg_match('/errno=(\d+) (.+)/', $error, $m)) {
@@ -150,15 +162,15 @@ final class TcpConnector implements ConnectorInterface
                 }
                 return true;
             });
-            
+
             @fwrite($stream, "\n");
             restore_error_handler();
-            
+
             return [$errno, $errstr];
         }
-        
+
         $errno = \defined('SOCKET_ECONNREFUSED') ? SOCKET_ECONNREFUSED : 111;
-        
+
         return [$errno, $errstr];
     }
 }

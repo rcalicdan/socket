@@ -85,12 +85,7 @@ describe('Secure Server', function () {
             create_async_tls_client($port, $clients);
         });
 
-        $timeout = Loop::addTimer(5.0, function () {
-            Loop::stop();
-        });
-
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(5.0);
 
         expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
             ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
@@ -123,12 +118,7 @@ describe('Secure Server', function () {
             create_async_tls_client($port, $clients);
         });
 
-        $timeout = Loop::addTimer(5.0, function () {
-            Loop::stop();
-        });
-
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(5.0);
 
         expect($connectionCount)->toBe(3);
     });
@@ -167,12 +157,7 @@ describe('Secure Server', function () {
             $server->resume();
         });
 
-        $timeout = Loop::addTimer(5.0, function () {
-            Loop::stop();
-        });
-
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(5.0);
 
         expect($connectionCount)->toBe(1);
     });
@@ -213,12 +198,7 @@ describe('Secure Server', function () {
             }
         });
 
-        $timeout = Loop::addTimer(5.0, function () {
-            Loop::stop();
-        });
-
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(5.0);
 
         expect($errorReceived)->toBeInstanceOf(EncryptionFailedException::class);
     });
@@ -266,54 +246,51 @@ describe('Secure Server', function () {
             stream_context_set_option($client, 'ssl', 'verify_peer_name', false);
             stream_context_set_option($client, 'ssl', 'allow_self_signed', true);
 
-            Loop::addTimer(0.1, function () use ($client, &$clientData) {
-                $watcherId = null;
-                $handshakeComplete = false;
+            $handshakeWatcherId = null;
+            
+            // Define logic to execute after handshake success
+            $onHandshakeSuccess = function() use ($client, &$clientData) {
+                fwrite($client, "Hello Secure World\n");
 
-                $enableCrypto = function () use ($client, &$watcherId, &$handshakeComplete, &$clientData) {
-                    $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-
-                    if ($result === true) {
-                        if ($watcherId !== null) {
-                            Loop::removeStreamWatcher($watcherId);
-                        }
-                        $handshakeComplete = true;
-
-                        // Send data after handshake completes
-                        fwrite($client, "Hello Secure World\n");
-
-                        // Set up reader for response
-                        Loop::addTimer(0.5, function () use ($client, &$clientData) {
-                            $clientData = @fread($client, 1024);
-                            Loop::stop();
-                        });
-                    } elseif ($result === false) {
-                        if ($watcherId !== null) {
-                            Loop::removeStreamWatcher($watcherId);
-                        }
+                // Add dedicated read watcher for response
+                $readWatcherId = null;
+                $readWatcherId = Loop::addReadWatcher($client, function($r) use (&$clientData, &$readWatcherId) {
+                    $data = fread($r, 8192);
+                    if ($data !== false && $data !== '') {
+                        $clientData = $data;
+                        if ($readWatcherId) Loop::removeReadWatcher($readWatcherId);
+                        Loop::stop();
                     }
-                };
+                });
+            };
 
-                $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            // Define handshake processor
+            $processHandshake = function ($resource, $watcherId) use (&$handshakeWatcherId, $onHandshakeSuccess) {
+                $result = @stream_socket_enable_crypto($resource, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
 
-                if ($result === 0) {
-                    $watcherId = Loop::addStreamWatcher(
-                        $client,
-                        $enableCrypto,
-                        \Hibla\EventLoop\ValueObjects\StreamWatcher::TYPE_READ
-                    );
-                } elseif ($result === true) {
-                    $enableCrypto();
+                if ($result === true) {
+                    if ($watcherId) Loop::removeReadWatcher($watcherId);
+                    $onHandshakeSuccess();
+                } elseif ($result === false) {
+                    if ($watcherId) Loop::removeReadWatcher($watcherId);
+                    // Handshake failed
                 }
-            });
+            };
+
+            // Attempt immediate handshake
+            $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+
+            if ($result === 0) {
+                // If blocking, add watcher
+                $handshakeWatcherId = Loop::addReadWatcher($client, function($r) use (&$handshakeWatcherId, $processHandshake) {
+                    $processHandshake($r, $handshakeWatcherId);
+                });
+            } elseif ($result === true) {
+                $onHandshakeSuccess();
+            }
         });
 
-        $timeout = Loop::addTimer(5.0, function () {
-            Loop::stop();
-        });
-
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(5.0);
 
         expect($dataReceived)->toBe("Hello Secure World\n")
             ->and($clientData)->toBe("Echo: Hello Secure World\n");
@@ -383,19 +360,21 @@ describe('Secure Server', function () {
             stream_context_set_option($client, 'ssl', 'verify_peer_name', false);
             stream_context_set_option($client, 'ssl', 'allow_self_signed', true);
 
-            Loop::addTimer(0.1, function () use ($client) {
-                $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-
-                if ($result === 0) {
-                    Loop::addStreamWatcher(
-                        $client,
-                        function () use ($client) {
-                            @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-                        },
-                        \Hibla\EventLoop\ValueObjects\StreamWatcher::TYPE_READ
-                    );
+            $handshakeWatcherId = null;
+            $processHandshake = function($resource, $watcherId) use (&$handshakeWatcherId) {
+                $res = @stream_socket_enable_crypto($resource, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+                // We don't need to do anything on success, just wait for close
+                if ($res !== 0) {
+                    if ($watcherId) Loop::removeReadWatcher($watcherId);
                 }
-            });
+            };
+
+            $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if ($result === 0) {
+                 $handshakeWatcherId = Loop::addReadWatcher($client, function($res) use (&$handshakeWatcherId, $processHandshake) {
+                     $processHandshake($res, $handshakeWatcherId);
+                 });
+            }
         });
 
         // Close client after connection is established
@@ -405,12 +384,7 @@ describe('Secure Server', function () {
             }
         });
 
-        $timeout = Loop::addTimer(20, function () {
-            Loop::stop();
-        });
-
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(20.0);
 
         expect($closed)->toBe(true);
     });
@@ -476,27 +450,23 @@ describe('Secure Server', function () {
             stream_context_set_option($client, 'ssl', 'verify_peer_name', false);
             stream_context_set_option($client, 'ssl', 'allow_self_signed', true);
 
-            Loop::addTimer(0.1, function () use ($client) {
-                $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-
-                if ($result === 0) {
-                    Loop::addStreamWatcher(
-                        $client,
-                        function () use ($client) {
-                            @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-                        },
-                        \Hibla\EventLoop\ValueObjects\StreamWatcher::TYPE_READ
-                    );
+            $handshakeWatcherId = null;
+            $processHandshake = function($resource, $watcherId) use (&$handshakeWatcherId) {
+                $res = @stream_socket_enable_crypto($resource, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+                if ($res !== 0) {
+                     if ($watcherId) Loop::removeReadWatcher($watcherId);
                 }
-            });
+            };
+
+            $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if ($result === 0) {
+                 $handshakeWatcherId = Loop::addReadWatcher($client, function($res) use (&$handshakeWatcherId, $processHandshake) {
+                     $processHandshake($res, $handshakeWatcherId);
+                 });
+            }
         });
 
-        $timeout = Loop::addTimer(5.0, function () {
-            Loop::stop();
-        });
-
-        Loop::run();
-        Loop::cancelTimer($timeout);
+        run_with_timeout(5.0);
 
         expect($connectionReceived)->toBeTrue();
     });

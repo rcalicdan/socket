@@ -11,6 +11,17 @@ use Hibla\Socket\Exceptions\TimeoutException;
 use Hibla\Socket\Interfaces\ConnectorInterface;
 use Throwable;
 
+/**
+ * A connector decorator that enforces a time limit on the connection establishment process.
+ *
+ * This class wraps an underlying {@see ConnectorInterface} and ensures that the entire
+ * connection process—including DNS resolution (if applicable), TCP handshake, and
+ * any subsequent protocol negotiation (like TLS handshake)—is completed within a
+ * specified timeout duration.
+ *
+ * If the connection promise does not resolve (or reject) before the timeout expires,
+ * the promise is rejected, indicating a timeout.
+ */
 final class TimeoutConnector implements ConnectorInterface
 {
     public function __construct(
@@ -18,11 +29,14 @@ final class TimeoutConnector implements ConnectorInterface
         private readonly float $timeout
     ) {}
 
+    /**
+     * {@inheritDoc}
+     */
     public function connect(string $uri): PromiseInterface
     {
         /** @var Promise $promise */
         $promise = new Promise();
-        
+
         $pendingConnection = $this->connector->connect($uri);
         $timerId = null;
 
@@ -36,7 +50,7 @@ final class TimeoutConnector implements ConnectorInterface
         $timerId = Loop::addTimer($this->timeout, function () use ($promise, $pendingConnection, $cleanup, $uri) {
             $cleanup();
             $pendingConnection->cancel();
-            
+
             $promise->reject(new TimeoutException(
                 \sprintf('Connection to %s timed out after %.2f seconds', $uri, $this->timeout),
                 \defined('SOCKET_ETIMEDOUT') ? SOCKET_ETIMEDOUT : 110

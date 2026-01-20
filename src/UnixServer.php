@@ -14,12 +14,25 @@ use Hibla\Socket\Exceptions\InvalidUriException;
 use Hibla\Socket\Interfaces\ServerInterface;
 use Hibla\Socket\Internals\SocketUtil;
 
+/**
+ * A server for accepting client-side connections over Unix Domain Sockets (UDS).
+ *
+ * This implementation specializes in creating asynchronous, non-blocking connections
+ * to a local server identified by a file path, typically using the `unix://` URI scheme
+ * (e.g., `unix:///var/run/mysocket.sock`).
+ *
+ * It is primarily used for high-performance inter-process communication (IPC) on the same machine,
+ * bypassing the network stack overhead of TCP/IP.
+ */
 final class UnixServer extends EventEmitter implements ServerInterface
 {
     /** @var resource */
     private readonly mixed $master;
+
     private bool $listening = false;
+
     private ?string $watcherId = null;
+
     private ?string $socketPath = null;
 
     public function __construct(string $path, private readonly array $context = [])
@@ -75,6 +88,9 @@ final class UnixServer extends EventEmitter implements ServerInterface
         $this->resume();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function getAddress(): ?string
     {
         if (!\is_resource($this->master)) {
@@ -84,6 +100,9 @@ final class UnixServer extends EventEmitter implements ServerInterface
         return 'unix://' . stream_socket_get_name($this->master, false);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function pause(): void
     {
         if (!$this->listening || $this->watcherId === null) {
@@ -95,6 +114,9 @@ final class UnixServer extends EventEmitter implements ServerInterface
         $this->listening = false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function resume(): void
     {
         if ($this->listening || !\is_resource($this->master)) {
@@ -109,6 +131,9 @@ final class UnixServer extends EventEmitter implements ServerInterface
         $this->listening = true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function close(): void
     {
         if (!\is_resource($this->master)) {

@@ -194,7 +194,7 @@ function create_async_tls_client(int $port, array &$clients, array $sslOptions =
     });
 }
 
-function createSocketPair(): array
+function creat_socket_pair(): array
 {
     $server = stream_socket_server('tcp://127.0.0.1:0');
     $address = stream_socket_get_name($server, false);
@@ -205,4 +205,16 @@ function createSocketPair(): array
     fclose($server);
 
     return [$client, $serverSocket];
+}
+
+function run_with_timeout(float $seconds): void
+{
+    $timer = Loop::addTimer($seconds, function () {
+        Loop::stop();
+        test()->fail('Test timed out - check internet connection');
+    });
+
+    Loop::run();
+    
+    Loop::cancelTimer($timer);
 }

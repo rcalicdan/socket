@@ -10,8 +10,21 @@ use Hibla\Socket\Exceptions\ConnectionFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
 use Hibla\Socket\Interfaces\ConnectorInterface;
 
+/**
+ * A connector for establishing client-side connections over Unix Domain Sockets (UDS).
+ *
+ * This implementation specializes in creating asynchronous, non-blocking connections
+ * to a local server identified by a file path, typically using the `unix://` URI scheme
+ * (e.g., `unix:///var/run/mysocket.sock`).
+ *
+ * It is primarily used for high-performance inter-process communication (IPC) on the same machine,
+ * bypassing the network stack overhead of TCP/IP.
+ */
 final class UnixConnector implements ConnectorInterface
 {
+    /**
+     * {@inheritDoc}
+     */
     public function connect(string $path): PromiseInterface
     {
         if (!str_contains($path, '://')) {
@@ -24,7 +37,7 @@ final class UnixConnector implements ConnectorInterface
         }
 
         $socketPath = substr($path, 7);
-        
+
         if (!file_exists($socketPath)) {
             return Promise::rejected(new ConnectionFailedException(
                 \sprintf('Unix socket "%s" does not exist', $socketPath),
@@ -43,7 +56,7 @@ final class UnixConnector implements ConnectorInterface
 
         if ($resource === false) {
             return Promise::rejected(new ConnectionFailedException(
-                
+
                 \sprintf('Unable to connect to unix domain socket "%s": %s', $socketPath, $errstr),
                 $errno
             ));

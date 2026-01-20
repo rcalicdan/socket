@@ -11,7 +11,14 @@ use Hibla\Stream\Util;
 use Hibla\Socket\Interfaces\ConnectionInterface;
 
 /**
- * @internal
+ * Concrete implementation of a streaming socket connection.
+ *
+ * This class wraps a raw PHP stream resource (e.g., a TCP socket, Unix domain socket)
+ * and provides an event-driven interface for reading and writing data. It manages
+ * the non-blocking I/O loop interactions, write buffering, and flow control.
+ *
+ * @internal This class is intended for internal use by Servers and Connectors to wrap resources.
+ *           Public code should type-hint against {@see ConnectionInterface}.
  */
 final class Connection extends EventEmitter implements ConnectionInterface
 {

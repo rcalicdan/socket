@@ -85,13 +85,7 @@ describe('Socket Server', function () {
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
             expect(end($clients))->toBeResource();
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
                 ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
@@ -115,13 +109,7 @@ describe('Socket Server', function () {
 
             expect(end($clients))->toBeResource();
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionCount)->toBe(3);
         });
@@ -146,13 +134,7 @@ describe('Socket Server', function () {
             $clients[] = @stream_socket_client('tcp://[::1]:' . $port);
             expect(end($clients))->toBeResource();
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionReceived)->toBeTrue();
         });
@@ -190,8 +172,6 @@ describe('Socket Server', function () {
                     $closeCount++;
                 });
             });
-
-            // Rapidly create and close connections
             for ($i = 0; $i < 10; $i++) {
                 $client = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
                 if ($client !== false) {
@@ -204,12 +184,9 @@ describe('Socket Server', function () {
                 }
             }
 
-            $timeout = Loop::addTimer(0.5, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            Loop::addTimer(0.5, fn() => Loop::stop());
+            
+            run_with_timeout(2.0);
 
             expect($connectionCount)->toBe(10)
                 ->and($closeCount)->toBeGreaterThan(0);
@@ -219,11 +196,9 @@ describe('Socket Server', function () {
             $port = get_free_port();
             $server = new SocketServer('tcp://127.0.0.1:' . $port);
 
-            // Pause immediately
             $server->pause();
             expect($server->getAddress())->not->toBeNull();
 
-            // Resume
             $server->resume();
             expect($server->getAddress())->not->toBeNull();
 
@@ -235,12 +210,7 @@ describe('Socket Server', function () {
 
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionReceived)->toBeTrue();
         });
@@ -281,12 +251,7 @@ describe('Socket Server', function () {
                 create_async_tls_client($port, $clients);
             });
 
-            $timeout = Loop::addTimer(5.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(5.0);
 
             expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
                 ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
@@ -318,12 +283,7 @@ describe('Socket Server', function () {
                 create_async_tls_client($port, $clients);
             });
 
-            $timeout = Loop::addTimer(5.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(5.0);
 
             expect($connectionCount)->toBe(3);
         });
@@ -378,19 +338,19 @@ describe('Socket Server', function () {
 
                         if ($result === true) {
                             if ($watcherId !== null) {
-                                Loop::removeStreamWatcher($watcherId);
+                                Loop::removeReadWatcher($watcherId);
                             }
                             $handshakeComplete = true;
 
                             fwrite($client, "Hello Secure World\n");
-
+                            
                             Loop::addTimer(0.5, function () use ($client, &$clientData) {
                                 $clientData = @fread($client, 1024);
                                 Loop::stop();
                             });
                         } elseif ($result === false) {
                             if ($watcherId !== null) {
-                                Loop::removeStreamWatcher($watcherId);
+                                Loop::removeReadWatcher($watcherId);
                             }
                         }
                     };
@@ -398,10 +358,9 @@ describe('Socket Server', function () {
                     $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
 
                     if ($result === 0) {
-                        $watcherId = Loop::addStreamWatcher(
+                        $watcherId = Loop::addReadWatcher(
                             $client,
                             $enableCrypto,
-                            \Hibla\EventLoop\ValueObjects\StreamWatcher::TYPE_READ
                         );
                     } elseif ($result === true) {
                         $enableCrypto();
@@ -409,12 +368,7 @@ describe('Socket Server', function () {
                 });
             });
 
-            $timeout = Loop::addTimer(5.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(5.0);
 
             expect($dataReceived)->toBe("Hello Secure World\n")
                 ->and($clientData)->toBe("Echo: Hello Secure World\n");
@@ -431,9 +385,9 @@ describe('Socket Server', function () {
 
             $server->on('error', function ($error) use (&$errorReceived) {
                 $errorReceived = true;
+                Loop::stop();
             });
 
-            // Connect without TLS handshake (plain TCP)
             Loop::addTimer(0.05, function () use ($port, &$clients) {
                 $client = @stream_socket_client(
                     'tcp://127.0.0.1:' . $port,
@@ -444,17 +398,11 @@ describe('Socket Server', function () {
 
                 if ($client !== false) {
                     $clients[] = $client;
-                    // Send plain text without TLS handshake
                     @fwrite($client, "plain text\n");
                 }
             });
 
-            $timeout = Loop::addTimer(2.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(2.0);
 
             expect($errorReceived)->toBeTrue();
         });
@@ -481,12 +429,7 @@ describe('Socket Server', function () {
                 }
             });
 
-            $timeout = Loop::addTimer(5.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(5.0);
 
             expect($successCount)->toBe(5);
         });
@@ -505,7 +448,6 @@ describe('Socket Server', function () {
                 Loop::stop();
             });
 
-            // Pause server
             $server->pause();
 
             Loop::addTimer(0.05, function () use ($port, &$clients) {
@@ -517,12 +459,7 @@ describe('Socket Server', function () {
                 $server->resume();
             });
 
-            $timeout = Loop::addTimer(5.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(5.0);
 
             expect($connectionCount)->toBe(1);
         });
@@ -555,13 +492,7 @@ describe('Socket Server', function () {
             }
             expect($client)->toBeResource();
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class);
             expect($connectionReceived->getLocalAddress())->toContain('unix://');
@@ -585,12 +516,9 @@ describe('Socket Server', function () {
                 }
             }
 
-            $timeout = Loop::addTimer(0.2, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            Loop::addTimer(0.2, fn() => Loop::stop());
+            
+            run_with_timeout(1.0);
 
             expect($connectionCount)->toBe(15);
 
@@ -648,13 +576,7 @@ describe('Socket Server', function () {
             }
             expect($client)->toBeResource();
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class);
 
@@ -699,11 +621,7 @@ describe('Socket Server', function () {
                 $server->resume();
             });
 
-            $timeout = Loop::addTimer(0.5, fn() => Loop::stop());
-
-            Loop::run();
-
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionCount)->toBe(1);
         });
@@ -736,7 +654,6 @@ describe('Socket Server', function () {
                 $errorReceived = $error;
             });
 
-            // Access underlying server and emit error
             (function () {
                 $this->server->emit('error', [new RuntimeException('Test error')]);
             })->call($server);
@@ -750,9 +667,9 @@ describe('Socket Server', function () {
             $server = new SocketServer('tcp://127.0.0.1:' . $port);
 
             $server->pause();
-            $server->pause(); // Double pause
+            $server->pause();
             $server->resume();
-            $server->resume(); // Double resume
+            $server->resume();
 
             $connectionReceived = false;
 
@@ -763,12 +680,7 @@ describe('Socket Server', function () {
 
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionReceived)->toBeTrue();
         });
@@ -778,8 +690,8 @@ describe('Socket Server', function () {
             $server = new SocketServer('tcp://127.0.0.1:' . $port);
 
             $server->close();
-            $server->close(); // Second close should be no-op
-            $server->close(); // Third close should be no-op
+            $server->close(); 
+            $server->close();
 
             expect($server->getAddress())->toBeNull();
         });
@@ -789,7 +701,7 @@ describe('Socket Server', function () {
             $server = new SocketServer('tcp://127.0.0.1:' . $port);
 
             $server->close();
-            $server->pause(); // Should not cause errors
+            $server->pause();
 
             expect($server->getAddress())->toBeNull();
         });
@@ -799,7 +711,7 @@ describe('Socket Server', function () {
             $server = new SocketServer('tcp://127.0.0.1:' . $port);
 
             $server->close();
-            $server->resume(); // Should not cause errors
+            $server->resume();
 
             expect($server->getAddress())->toBeNull();
         });
@@ -853,7 +765,6 @@ describe('Socket Server', function () {
 
             $server = new SocketServer('tls://127.0.0.1:' . $port, [
                 'tls' => ['local_cert' => $certFile],
-                // tcp and unix should be auto-added
             ]);
 
             expect($server->getAddress())->toBe('tls://127.0.0.1:' . $port);
@@ -878,13 +789,7 @@ describe('Socket Server', function () {
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
             expect(end($clients))->toBeResource();
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($dataReceived)->toBe("Hello World\n");
         });
@@ -899,19 +804,24 @@ describe('Socket Server', function () {
 
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
             expect(end($clients))->toBeResource();
+            $client = end($clients);
 
-            stream_set_blocking(end($clients), false);
+            stream_set_blocking($client, false);
 
-            $timeout = Loop::addTimer(0.1, function () {
+            $receivedData = null;
+            $watcherId = null;
+
+            $watcherId = Loop::addReadWatcher($client, function($resource) use ($client, &$receivedData, &$watcherId) {
+                $receivedData = fread($client, 1024);
+                if ($watcherId) {
+                    Loop::removeReadWatcher($watcherId);
+                }
                 Loop::stop();
             });
 
-            Loop::run();
+            run_with_timeout(1.0);
 
-            Loop::cancelTimer($timeout);
-
-            $data = fread(end($clients), 1024);
-            expect($data)->toBe("Welcome!\n");
+            expect($receivedData)->toBe("Welcome!\n");
         });
 
         it('emits end event when client closes connection', function () use (&$server, &$clients) {
@@ -936,13 +846,7 @@ describe('Socket Server', function () {
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
             expect(end($clients))->toBeResource();
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($endReceived)->toBe(true);
         });
@@ -968,12 +872,7 @@ describe('Socket Server', function () {
             stream_set_blocking(end($clients), false);
             fwrite(end($clients), $largeData);
 
-            $timeout = Loop::addTimer(2.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(2.0);
 
             expect(strlen($dataReceived))->toBe(strlen($largeData));
         });
@@ -1000,17 +899,15 @@ describe('Socket Server', function () {
                 fwrite(end($clients), "Client message\n");
             });
 
-            Loop::addTimer(0.1, function () use (&$clients, &$clientReceived) {
-                $clientReceived = fread(end($clients), 1024);
+            $client = end($clients);
+            $watcherId = null;
+            $watcherId = Loop::addReadWatcher($client, function($resource) use ($client, &$clientReceived, &$watcherId) {
+                $clientReceived = fread($client, 1024);
+                if ($watcherId) Loop::removeReadWatcher($watcherId);
                 Loop::stop();
             });
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($serverReceived)->toBe("Client message\n")
                 ->and($clientReceived)->toBe("Server got: Client message\n");
@@ -1032,12 +929,7 @@ describe('Socket Server', function () {
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
             expect(end($clients))->toBeResource();
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($closed)->toBe(true);
         });
@@ -1074,18 +966,12 @@ describe('Socket Server', function () {
                 Loop::stop();
             });
 
-            // Try connecting via localhost (may resolve to 127.0.0.1 or ::1)
             $client = @stream_socket_client('tcp://127.0.0.1:' . $port, $errno, $errstr, 1);
             if ($client !== false) {
                 $clients[] = $client;
             }
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionReceived)->toBeTrue();
         });
@@ -1100,25 +986,20 @@ describe('Socket Server', function () {
                 expect($tempServer->getAddress())->toBeNull();
             }
 
-            expect(true)->toBeTrue(); // If we got here, no crashes occurred
+            expect(true)->toBeTrue();
         });
 
         it('handles connection when no listeners are attached', function () use (&$server, &$clients) {
             $port = get_free_port();
             $server = new SocketServer('tcp://127.0.0.1:' . $port);
 
-            // No 'connection' event listener attached
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
             expect(end($clients))->toBeResource();
 
-            $timeout = Loop::addTimer(0.1, function () {
-                Loop::stop();
-            });
+            Loop::addTimer(0.1, fn() => Loop::stop());
+            
+            run_with_timeout(1.0);
 
-            Loop::run();
-            Loop::cancelTimer($timeout);
-
-            // Should not crash even without listeners
             expect(true)->toBeTrue();
         });
 
@@ -1138,12 +1019,9 @@ describe('Socket Server', function () {
             try {
                 $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
 
-                $timeout = Loop::addTimer(0.1, function () {
-                    Loop::stop();
-                });
+                Loop::addTimer(0.1, fn() => Loop::stop());
 
-                Loop::run();
-                Loop::cancelTimer($timeout);
+                run_with_timeout(1.0);
             } catch (RuntimeException $e) {
                 // Exception thrown during connection handling
             }
@@ -1163,10 +1041,13 @@ describe('Socket Server', function () {
                 $connection->on('data', function ($data) use (&$dataCount, $connection) {
                     $dataCount++;
                     $connection->write("Echo: " . $data);
+                    
+                    if ($dataCount === 20) {
+                        Loop::stop();
+                    }
                 });
             });
 
-            // Create 20 connectcons and send data
             for ($i = 0; $i < 20; $i++) {
                 $client = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
                 if ($client !== false) {
@@ -1176,12 +1057,7 @@ describe('Socket Server', function () {
                 }
             }
 
-            $timeout = Loop::addTimer(1.0, function () {
-                Loop::stop();
-            });
-
-            Loop::run();
-            Loop::cancelTimer($timeout);
+            run_with_timeout(1.0);
 
             expect($connectionCount)->toBe(20)
                 ->and($dataCount)->toBe(20);

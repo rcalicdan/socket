@@ -14,10 +14,15 @@ use Hibla\Socket\Internals\SocketUtil;
 
 final class FdServer extends EventEmitter implements ServerInterface
 {
+    /**
+     * @var resource
+     */
     private readonly mixed $master;
+
     private readonly bool $isUnix;
 
     private bool $listening = false;
+
     private ?string $watcherId = null;
 
     public function __construct(int|string $fd)
@@ -59,6 +64,9 @@ final class FdServer extends EventEmitter implements ServerInterface
         $this->resume();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function getAddress(): ?string
     {
         if (!\is_resource($this->master)) {
@@ -80,6 +88,9 @@ final class FdServer extends EventEmitter implements ServerInterface
         return 'tcp://' . $address;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function pause(): void
     {
         if (!$this->listening || $this->watcherId === null) {
@@ -91,6 +102,9 @@ final class FdServer extends EventEmitter implements ServerInterface
         $this->listening = false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function resume(): void
     {
         if ($this->listening || !\is_resource($this->master)) {
@@ -104,6 +118,9 @@ final class FdServer extends EventEmitter implements ServerInterface
         $this->listening = true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function close(): void
     {
         if (!\is_resource($this->master)) {

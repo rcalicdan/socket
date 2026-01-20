@@ -110,9 +110,6 @@ final class Connector implements ConnectorInterface
         return $this->connectors[$scheme]->connect($uri);
     }
 
-    /**
-     * Extracts the scheme from a URI.
-     */
     private function extractScheme(string $uri): string
     {
         if (!str_contains($uri, '://')) {
@@ -122,9 +119,6 @@ final class Connector implements ConnectorInterface
         return substr($uri, 0, strpos($uri, '://'));
     }
 
-    /**
-     * Builds the base TCP connector.
-     */
     private function buildTcpConnector(array $context): ConnectorInterface
     {
         if ($context['tcp'] instanceof ConnectorInterface) {

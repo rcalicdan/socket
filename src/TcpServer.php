@@ -12,12 +12,27 @@ use Hibla\Socket\Exceptions\InvalidUriException;
 use Hibla\Socket\Interfaces\ServerInterface;
 use Hibla\Socket\Internals\SocketUtil;
 
+/**
+ * An event-driven server for accepting non-blocking TCP/IP streaming connections.
+ *
+ * This class wraps a raw PHP stream socket resource bound to a specific IP address
+ * and port, providing an asynchronous, non-blocking interface for listening and
+ * accepting incoming client connections.
+ *
+ * It utilizes the event loop to watch the server socket for readability, triggering
+ * the `connection` event whenever a new client initiates a handshake.
+ */
 final class TcpServer extends EventEmitter implements ServerInterface
 {
-    /** @var resource */
+    /**
+     *  @var resource 
+     */
     private readonly mixed $master;
+
     private readonly string $address;
+
     private bool $listening = false;
+
     private ?string $watcherId = null;
 
     public function __construct(string $uri, private readonly array $context = [])
@@ -75,6 +90,9 @@ final class TcpServer extends EventEmitter implements ServerInterface
         $this->resume();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function getAddress(): ?string
     {
         if (!\is_resource($this->master)) {
@@ -91,6 +109,9 @@ final class TcpServer extends EventEmitter implements ServerInterface
         return 'tcp://' . $address;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function pause(): void
     {
         if (!$this->listening || $this->watcherId === null) {
@@ -101,6 +122,9 @@ final class TcpServer extends EventEmitter implements ServerInterface
         $this->listening = false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function resume(): void
     {
         if ($this->listening || !\is_resource($this->master)) {
@@ -115,6 +139,9 @@ final class TcpServer extends EventEmitter implements ServerInterface
         $this->listening = true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function close(): void
     {
         if (!\is_resource($this->master)) {
