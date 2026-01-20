@@ -6,22 +6,8 @@ use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Stream\Interfaces\WritableStreamInterface;
 
 describe('Connection', function () {
-    $server = null;
     $client = null;
     $serverConnection = null;
-
-    function createSocketPair(): array
-    {
-        $server = stream_socket_server('tcp://127.0.0.1:0');
-        $address = stream_socket_get_name($server, false);
-
-        $client = stream_socket_client('tcp://' . $address);
-        $serverSocket = stream_socket_accept($server);
-
-        fclose($server);
-
-        return [$client, $serverSocket];
-    }
 
     afterEach(function () use (&$client, &$serverConnection) {
         if ($serverConnection instanceof Connection) {
@@ -367,7 +353,6 @@ describe('Connection', function () {
             $drainEmitted = true;
         });
 
-        // Write large amount of data to potentially fill buffer
         $largeData = str_repeat('x', 100000);
         $serverConnection->write($largeData);
 
@@ -375,7 +360,6 @@ describe('Connection', function () {
         Loop::run();
         Loop::cancelTimer($timeout);
 
-        // Drain might or might not be emitted depending on buffer size
         expect($drainEmitted)->toBeIn([true, false]);
     });
 

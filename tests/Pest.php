@@ -17,7 +17,7 @@ function create_listening_server(array &$sockets): mixed
 {
     $server = @stream_socket_server('127.0.0.1:0', $errno, $errstr);
     if ($server === false) {
-        test()->skip("Could not create a test server: {$errstr}");
+        test()->markTestSkipped("Could not create a test server: {$errstr}");
     }
     stream_set_blocking($server, false);
     $sockets[] = $server;
@@ -30,7 +30,7 @@ function get_free_port(): int
     $socket = @stream_socket_server('127.0.0.1:0', $errno, $errstr);
 
     if ($socket === false) {
-        test()->skip("Could not find a free port: {$errstr}");
+        test()->markTestSkipped("Could not find a free port: {$errstr}");
     }
 
     $address = stream_socket_get_name($socket, false);
@@ -44,7 +44,7 @@ function create_listening_socket(string $address): mixed
     $socket = @stream_socket_server($address, $errno, $errstr);
 
     if ($socket === false) {
-        test()->skip("Could not create listening socket: {$errstr}");
+        test()->markTestSkipped("Could not create listening socket: {$errstr}");
     }
 
     return $socket;
@@ -57,11 +57,11 @@ function get_fd_from_socket(mixed $socket): int
     }
 
     if (PHP_OS_FAMILY === 'Windows') {
-        test()->skip('FD extraction not reliably supported on Windows');
+        test()->markTestSkipped('FD extraction not reliably supported on Windows');
     }
 
     if (!is_dir('/dev/fd')) {
-        test()->skip('Not supported on your platform (requires /dev/fd)');
+        test()->markTestSkipped('Not supported on your platform (requires /dev/fd)');
     }
 
     $stat = @fstat($socket);
@@ -192,4 +192,17 @@ function create_async_tls_client(int $port, array &$clients, array $sslOptions =
             );
         }
     });
+}
+
+function createSocketPair(): array
+{
+    $server = stream_socket_server('tcp://127.0.0.1:0');
+    $address = stream_socket_get_name($server, false);
+
+    $client = stream_socket_client('tcp://' . $address);
+    $serverSocket = stream_socket_accept($server);
+
+    fclose($server);
+
+    return [$client, $serverSocket];
 }

@@ -576,7 +576,7 @@ describe("Secure Connector", function () {
             $tcpConnector = new TcpConnector([]);
             $secureConnector = new SecureConnector($tcpConnector);
 
-            $promise = $secureConnector->connect('tls://192.0.2.1:443');
+            $promise = $secureConnector->connect('tls://127.0.0.1:1');
 
             Loop::addTimer(0.5, function () {
                 Loop::stop();
@@ -589,7 +589,7 @@ describe("Secure Connector", function () {
             try {
                 $promise->wait();
             } catch (ConnectionFailedException $e) {
-                expect($e->getMessage())->toContain('tls://192.0.2.1:443');
+                expect($e->getMessage())->toContain('tls://127.0.0.1:1');
             }
         });
     });
