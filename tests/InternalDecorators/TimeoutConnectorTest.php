@@ -402,6 +402,7 @@ describe('TimeoutConnector', function () {
 
         expect($result->isClosed())->toBeTrue()
             ->and($result->isReadable())->toBeFalse()
-            ->and($result->isWritable())->toBeFalse();
+            ->and($result->isWritable())->toBeFalse()
+        ;
     });
 });

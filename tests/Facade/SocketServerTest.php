@@ -474,7 +474,7 @@ describe('Socket Server', function () {
 
     describe('Unix Server creation', function () use (&$server, &$clients) {
         it('constructs with unix:// scheme', function () use (&$server) {
-            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid(rand(), true) . '.sock';
+            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid('', true) . '.sock';
             $server = new SocketServer('unix://' . $socketPath);
 
             expect($server->getAddress())->toBe('unix://' . $socketPath);
@@ -484,7 +484,7 @@ describe('Socket Server', function () {
         });
 
         it('accepts connection on unix socket', function () use (&$server, &$clients) {
-            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid(rand(), true) . '.sock';
+            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid('', true) . '.sock';
             $server = new SocketServer('unix://' . $socketPath);
             $connectionReceived = null;
 
@@ -508,7 +508,7 @@ describe('Socket Server', function () {
         });
 
         it('handles multiple rapid unix socket connections', function () use (&$server, &$clients) {
-            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid(rand(), true) . '.sock';
+            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid('', true) . '.sock';
             $server = new SocketServer('unix://' . $socketPath);
             $connectionCount = 0;
 
@@ -533,7 +533,7 @@ describe('Socket Server', function () {
         });
 
         it('cleans up socket file on close', function () use (&$server) {
-            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid(rand(), true) . '.sock';
+            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid('', true) . '.sock';
             $server = new SocketServer('unix://' . $socketPath);
 
             expect(file_exists($socketPath))->toBeTrue();
@@ -750,7 +750,7 @@ describe('Socket Server', function () {
         });
 
         it('passes unix context options to UnixServer', function () use (&$server) {
-            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid(rand(), true) . '.sock';
+            $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid('', true) . '.sock';
 
             $server = new SocketServer('unix://' . $socketPath, [
                 'unix' => ['backlog' => 128],
@@ -1071,7 +1071,8 @@ describe('Socket Server', function () {
             run_with_timeout(1.0);
 
             expect($connectionCount)->toBe(20)
-                ->and($dataCount)->toBe(20);
+                ->and($dataCount)->toBe(20)
+            ;
         });
     });
 });

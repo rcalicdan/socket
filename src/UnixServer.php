@@ -26,7 +26,9 @@ use Hibla\Socket\Internals\SocketUtil;
  */
 final class UnixServer extends EventEmitter implements ServerInterface
 {
-    /** @var resource */
+    /**
+     *  @var resource
+     */
     private readonly mixed $master;
 
     private bool $listening = false;
@@ -35,6 +37,9 @@ final class UnixServer extends EventEmitter implements ServerInterface
 
     private ?string $socketPath = null;
 
+    /**
+     * @param array<string, mixed> $context
+     */
     public function __construct(string $path, private readonly array $context = [])
     {
         if (strpos($path, '://') === false) {
@@ -61,11 +66,13 @@ final class UnixServer extends EventEmitter implements ServerInterface
 
         $errno = 0;
         $errstr = '';
-        set_error_handler(function ($_, $error) use (&$errno, &$errstr) {
-            if (preg_match('/\(([^\)]+)\)|\[(\d+)\]: (.*)/', $error, $match)) {
+        set_error_handler(function (int $severity, string $error) use (&$errno, &$errstr): bool {
+            if (preg_match('/\(([^\)]+)\)|\[(\d+)\]: (.*)/', $error, $match) !== false && $match !== []) {
                 $errstr = $match[3] ?? $match[1];
                 $errno = (int) ($match[2] ?? 0);
             }
+
+            return true;
         });
 
         $master = stream_socket_server(
@@ -80,7 +87,7 @@ final class UnixServer extends EventEmitter implements ServerInterface
         if ($master === false) {
             throw new BindFailedException(
                 \sprintf('Failed to listen on Unix domain socket "%s": %s', $path, $errstr),
-                $errno
+                (int) $errno
             );
         }
 
@@ -158,6 +165,9 @@ final class UnixServer extends EventEmitter implements ServerInterface
         }
     }
 
+    /**
+     * @param resource $socket
+     */
     private function handleConnection(mixed $socket): void
     {
         $connection = new Connection($socket, isUnix: true);

@@ -9,8 +9,8 @@ use Hibla\Promise\Interfaces\PromiseInterface;
 use Hibla\Promise\Promise;
 use Hibla\Socket\Exceptions\ConnectionFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
-use Hibla\Socket\Interfaces\ConnectorInterface;
 use Hibla\Socket\Interfaces\ConnectionInterface;
+use Hibla\Socket\Interfaces\ConnectorInterface;
 
 /**
  * A connector that transparently resolves hostnames to IP addresses.

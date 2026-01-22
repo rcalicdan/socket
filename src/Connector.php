@@ -109,6 +109,7 @@ final class Connector implements ConnectorInterface
         }
 
         $pos = strpos($uri, '://');
+
         return $pos !== false ? substr($uri, 0, $pos) : 'tcp';
     }
 
@@ -122,7 +123,7 @@ final class Connector implements ConnectorInterface
         }
 
         $tcpContext = \is_array($context['tcp']) ? $context['tcp'] : [];
-        
+
         // Ensure the array has string keys for PHPStan
         /** @var array<string, mixed> $typedContext */
         $typedContext = $tcpContext;
@@ -180,7 +181,7 @@ final class Connector implements ConnectorInterface
     private function applyTimeout(ConnectorInterface $connector, array $context): ConnectorInterface
     {
         $timeout = $context['timeout'];
-        
+
         if ($timeout === false) {
             return $connector;
         }
@@ -190,6 +191,7 @@ final class Connector implements ConnectorInterface
             if ($timeoutFloat <= 0) {
                 return $connector;
             }
+
             return new TimeoutConnector($connector, $timeoutFloat);
         }
 
@@ -206,7 +208,7 @@ final class Connector implements ConnectorInterface
         }
 
         $tlsContext = \is_array($context['tls']) ? $context['tls'] : [];
-        
+
         /** @var array<string, mixed> $typedContext */
         $typedContext = $tlsContext;
 

@@ -18,7 +18,7 @@ describe('Unix Server', function () {
             test()->markTestSkipped('Skipped on Windows');
         }
 
-        $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid(rand(), true) . '.sock';
+        $socketPath = sys_get_temp_dir() . '/hibla-socket-test-' . uniqid('', true) . '.sock';
     });
 
     afterEach(function () use (&$socketPath, &$server, &$clients) {

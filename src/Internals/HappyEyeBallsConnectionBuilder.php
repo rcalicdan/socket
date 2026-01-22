@@ -37,32 +37,29 @@ final class HappyEyeBallsConnectionBuilder
     private const float CONNECTION_ATTEMPT_DELAY = 0.25;
 
     /**
-     *  @var array<int, PromiseInterface>
+     * @var array<int, PromiseInterface<list<string>>>
      */
     private array $resolverPromises = [];
 
     /**
-     * @var array<int, PromiseInterface>
+     * @var array<int, PromiseInterface<mixed>>
      */
     private array $connectionPromises = [];
 
     /**
-     *  @var list<string> Queue of IP addresses to connect to
+     * @var list<string> Queue of IP addresses to connect to
      */
     private array $connectQueue = [];
 
     /**
-     *  @var array<string, mixed>
+     * @var array<string, mixed>
      */
     private readonly array $parts;
 
     /**
-     *  @var array{4: bool, 28: bool} Track resolution status by RecordType value
+     * @var array<int, bool> Track resolution status by RecordType value
      */
-    private array $resolved = [
-        RecordType::A->value => false,
-        RecordType::AAAA->value => false,
-    ];
+    private array $resolved = [];
 
     private int $ipsCount = 0;
 
@@ -80,6 +77,9 @@ final class HappyEyeBallsConnectionBuilder
 
     private ?string $resolutionDelayTimerId = null;
 
+    /**
+     * @param array<string, mixed> $parts
+     */
     public function __construct(
         private readonly ConnectorInterface $connector,
         private readonly ResolverInterface $resolver,
@@ -89,36 +89,21 @@ final class HappyEyeBallsConnectionBuilder
         private readonly bool $ipv6Check = false
     ) {
         $this->parts = $parts;
+        $this->resolved = [
+            RecordType::A->value => false,
+            RecordType::AAAA->value => false,
+        ];
     }
 
     /**
      * Start the Happy Eyeballs connection process
+     *
+     * @return PromiseInterface<mixed>
      */
     public function connect(): PromiseInterface
     {
-        /** @var Promise $promise */
+        /** @var Promise<mixed> $promise */
         $promise = new Promise();
-
-        $lookupResolve = function (RecordType $type) use ($promise): \Closure {
-            return function (array $ips) use ($type, $promise): void {
-                if ($this->isResolved) {
-                    return;
-                }
-
-                unset($this->resolverPromises[$type->value]);
-                $this->resolved[$type->value] = true;
-
-                $this->mixIpsIntoConnectQueue($ips);
-
-                if (
-                    $this->nextAttemptTimerId === null &&
-                    $this->connectQueue !== [] &&
-                    $this->connectionPromises === []
-                ) {
-                    $this->check($promise);
-                }
-            };
-        };
 
         // Check if IPv6 pre-check is enabled and IPv6 is actually routable
         if ($this->ipv6Check && ! IPv6ConnectivityChecker::isRoutable()) {
@@ -127,7 +112,13 @@ final class HappyEyeBallsConnectionBuilder
 
             // Start IPv4 (A) resolution immediately without delay
             $this->resolverPromises[RecordType::A->value] = $this->resolve(RecordType::A, $promise)
-                ->then($lookupResolve(RecordType::A))
+                ->then(
+                    /**
+                     * @param list<string> $ips
+                     * @return list<string>
+                     */
+                    fn (array $ips): array => $this->handleResolvedIps($ips, RecordType::A, $promise)
+                )
             ;
         } else {
             // Full RFC 8305 Dual Stack implementation
@@ -135,33 +126,47 @@ final class HappyEyeBallsConnectionBuilder
 
             // Start IPv6 (AAAA) resolution immediately
             $this->resolverPromises[RecordType::AAAA->value] = $this->resolve(RecordType::AAAA, $promise)
-                ->then($lookupResolve(RecordType::AAAA))
+                ->then(
+                    /**
+                     * @param list<string> $ips
+                     * @return list<string>
+                     */
+                    fn (array $ips): array => $this->handleResolvedIps($ips, RecordType::AAAA, $promise)
+                )
             ;
 
             // Start IPv4 (A) resolution with potential delay per RFC 8305
             $this->resolverPromises[RecordType::A->value] = $this->resolve(RecordType::A, $promise)
-                ->then(function (array $ips) use ($promise): PromiseInterface|array {
-                    if ($this->isResolved) {
-                        return [];
-                    }
+                ->then(
+                    /**
+                     * @param list<string> $ips
+                     * @return PromiseInterface<list<string>>|list<string>
+                     * @phpstan-ignore-next-line
+                     */
+                    function (array $ips): PromiseInterface|array {
+                        if ($this->isResolved) {
+                            return $ips;
+                        }
 
-                    // Happy path: IPv6 resolved already or no IPv4 addresses
-                    if ($this->resolved[RecordType::AAAA->value] || $ips === []) {
-                        return $ips;
-                    }
+                        // Happy path: IPv6 resolved already or no IPv4 addresses
+                        if ($this->resolved[RecordType::AAAA->value] || $ips === []) {
+                            return $ips;
+                        }
 
-                    // Delay IPv4 processing per RFC 8305 Section 3
-                    return $this->delayIPv4Resolution($ips);
-                })
-                ->then($lookupResolve(RecordType::A))
+                        return $this->delayIPv4Resolution($ips);
+                    }
+                )
+                ->then(
+                    /**
+                     * @param list<string> $ips
+                     * @return list<string>
+                     */
+                    fn (array $ips): array => $this->handleResolvedIps($ips, RecordType::A, $promise)
+                )
             ;
         }
 
-        $promise->onCancel(function () use ($promise): void {
-            $this->cleanUp();
-        });
-
-        $promise->onCancel(function () use ($promise): void {
+        $promise->onCancel(function (): void {
             $this->cleanUp();
         });
 
@@ -169,17 +174,61 @@ final class HappyEyeBallsConnectionBuilder
     }
 
     /**
+     * Handle resolved IPs for a given record type
+     *
+     * @param list<string> $ips
+     * @param Promise<mixed> $promise
+     * @return list<string>
+     */
+    private function handleResolvedIps(array $ips, RecordType $type, Promise $promise): array
+    {
+        if ($this->isResolved) {
+            return $ips;
+        }
+
+        unset($this->resolverPromises[$type->value]);
+        $this->resolved[$type->value] = true;
+
+        // Ensure $ips is a proper list and extract string values
+        $ipsList = array_values($ips);
+        /** @var list<string> $stringIps */
+        $stringIps = array_filter($ipsList, 'is_string');
+
+        $this->mixIpsIntoConnectQueue($stringIps);
+
+        if (
+            $this->nextAttemptTimerId === null &&
+            $this->connectQueue !== [] &&
+            $this->connectionPromises === []
+        ) {
+            $this->check($promise);
+        }
+
+        return $ips;
+    }
+
+    /**
      * Resolve DNS records for specified type
      *
+     * @param Promise<mixed> $rejectTarget
      * @return PromiseInterface<list<string>>
      */
     private function resolve(RecordType $type, Promise $rejectTarget): PromiseInterface
     {
         return $this->resolver->resolveAll($this->host, $type)->then(
             null,
-            function (\Throwable $e) use ($type, $rejectTarget): array {
+            /**
+             * @param mixed $e
+             * @return list<string>
+             */
+            function ($e) use ($type, $rejectTarget): array {
+                assert($e instanceof \Throwable);
+
+                /** @var list<string> $emptyList */
+                $emptyList = [];
+
                 if ($this->isResolved) {
-                    return [];
+                    return $emptyList;
                 }
 
                 unset($this->resolverPromises[$type->value]);
@@ -204,7 +253,7 @@ final class HappyEyeBallsConnectionBuilder
                     ));
                 }
 
-                return [];
+                return $emptyList;
             }
         );
     }
@@ -217,7 +266,7 @@ final class HappyEyeBallsConnectionBuilder
      */
     private function delayIPv4Resolution(array $ips): PromiseInterface
     {
-        /** @var Promise $delayedPromise */
+        /** @var Promise<list<string>> $delayedPromise */
         $delayedPromise = new Promise();
         $cancelled = false;
 
@@ -226,9 +275,15 @@ final class HappyEyeBallsConnectionBuilder
             self::RESOLUTION_DELAY,
             function () use ($delayedPromise, $ips, &$cancelled): void {
                 $this->resolutionDelayTimerId = null;
-                if (! $cancelled && ! $this->isResolved) {
-                    $delayedPromise->resolve($ips);
+                // @phpstan-ignore-next-line Defensive check for cancellation
+                if ($cancelled) {
+                    return;
                 }
+
+                if ($this->isResolved) {
+                    return;
+                }
+                $delayedPromise->resolve($ips);
             }
         );
 
@@ -236,21 +291,30 @@ final class HappyEyeBallsConnectionBuilder
         $ipv6Promise = $this->resolverPromises[RecordType::AAAA->value] ?? null;
         if ($ipv6Promise !== null) {
             $ipv6Promise->then(function () use ($delayedPromise, $ips, &$cancelled): void {
-                if (! $cancelled && ! $this->isResolved && $this->resolutionDelayTimerId !== null) {
-                    Loop::cancelTimer($this->resolutionDelayTimerId);
-                    $this->resolutionDelayTimerId = null;
-                    $delayedPromise->resolve($ips);
+                // @phpstan-ignore-next-line Defensive check for cancellation
+                if ($cancelled) {
+                    return;
                 }
+
+                if ($this->isResolved) {
+                    return;
+                }
+
+                if ($this->resolutionDelayTimerId === null) {
+                    return;
+                }
+                Loop::cancelTimer($this->resolutionDelayTimerId);
+                $this->resolutionDelayTimerId = null;
+                $delayedPromise->resolve($ips);
             });
         }
 
-        $delayedPromise->onCancel(function () use (&$cancelled, &$ips): void {
+        $delayedPromise->onCancel(function () use (&$cancelled): void {
             $cancelled = true;
             if ($this->resolutionDelayTimerId !== null) {
                 Loop::cancelTimer($this->resolutionDelayTimerId);
                 $this->resolutionDelayTimerId = null;
             }
-            $ips = [];
         });
 
         return $delayedPromise;
@@ -261,6 +325,8 @@ final class HappyEyeBallsConnectionBuilder
      *
      * Per RFC 8305 Section 5: Connection attempts are started with a fixed delay
      * between them, regardless of whether previous attempts have failed.
+     *
+     * @param Promise<mixed> $promise
      */
     private function check(Promise $promise): void
     {
@@ -269,15 +335,18 @@ final class HappyEyeBallsConnectionBuilder
         }
 
         $ip = array_shift($this->connectQueue);
+        assert(is_string($ip));
 
         $connectionPromise = $this->attemptConnection($ip);
         $index = \count($this->connectionPromises);
         $this->connectionPromises[$index] = $connectionPromise;
 
         $connectionPromise->then(
-            onFulfilled: function ($connection) use ($index, $promise): void {
+            onFulfilled: function (mixed $connection) use ($index, $promise): void {
                 if ($this->isResolved) {
-                    $connection->close();
+                    if (is_object($connection) && method_exists($connection, 'close')) {
+                        $connection->close();
+                    }
 
                     return;
                 }
@@ -287,7 +356,13 @@ final class HappyEyeBallsConnectionBuilder
                 $this->cleanUp();
                 $promise->resolve($connection);
             },
-            onRejected: function (\Throwable $e) use ($index, $ip, $promise): void {
+            onRejected:
+            /**
+             * @param mixed $e
+             */
+            function ($e) use ($index, $ip, $promise): void {
+                assert($e instanceof \Throwable);
+
                 if ($this->isResolved) {
                     return;
                 }
@@ -301,6 +376,7 @@ final class HappyEyeBallsConnectionBuilder
                     '$1',
                     $e->getMessage()
                 );
+                assert(is_string($message));
 
                 if (! str_contains($ip, ':')) {
                     $this->lastError4 = $message;
@@ -346,11 +422,14 @@ final class HappyEyeBallsConnectionBuilder
 
     /**
      * Attempt connection to a specific IP
+     *
+     * @return PromiseInterface<mixed>
      */
     private function attemptConnection(string $ip): PromiseInterface
     {
         $uri = $this->buildUri($this->parts, $this->host, $ip);
 
+        /** @var PromiseInterface<mixed> */
         return $this->connector->connect($uri);
     }
 
@@ -369,7 +448,9 @@ final class HappyEyeBallsConnectionBuilder
 
         while ($stash !== [] || $ips !== []) {
             if ($ips !== []) {
-                $this->connectQueue[] = array_shift($ips);
+                $ip = array_shift($ips);
+                assert(is_string($ip));
+                $this->connectQueue[] = $ip;
             }
             if ($stash !== []) {
                 $this->connectQueue[] = array_shift($stash);
@@ -387,12 +468,15 @@ final class HappyEyeBallsConnectionBuilder
         $uri = '';
 
         if (isset($parts['scheme'])) {
+            assert(is_string($parts['scheme']));
             $uri .= $parts['scheme'] . '://';
         }
 
         if (isset($parts['user'])) {
+            assert(is_string($parts['user']));
             $uri .= $parts['user'];
             if (isset($parts['pass'])) {
+                assert(is_string($parts['pass']));
                 $uri .= ':' . $parts['pass'];
             }
             $uri .= '@';
@@ -401,20 +485,25 @@ final class HappyEyeBallsConnectionBuilder
         $uri .= str_contains($ip, ':') ? "[{$ip}]" : $ip;
 
         if (isset($parts['port'])) {
-            $uri .= ':' . $parts['port'];
+            $port = $parts['port'];
+            assert(is_int($port) || is_string($port));
+            $uri .= ':' . (string)$port;
         }
 
         if (isset($parts['path'])) {
+            assert(is_string($parts['path']));
             $uri .= $parts['path'];
         }
 
         $uri .= '?hostname=' . rawurlencode($host);
 
         if (isset($parts['query'])) {
+            assert(is_string($parts['query']));
             $uri .= '&' . $parts['query'];
         }
 
         if (isset($parts['fragment'])) {
+            assert(is_string($parts['fragment']));
             $uri .= '#' . $parts['fragment'];
         }
 
@@ -454,8 +543,8 @@ final class HappyEyeBallsConnectionBuilder
      */
     private function hasBeenResolved(): bool
     {
-        return $this->resolved[RecordType::A->value]
-            && $this->resolved[RecordType::AAAA->value];
+        return ($this->resolved[RecordType::A->value] ?? false)
+            && ($this->resolved[RecordType::AAAA->value] ?? false);
     }
 
     /**

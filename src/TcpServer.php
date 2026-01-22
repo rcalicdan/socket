@@ -35,6 +35,9 @@ final class TcpServer extends EventEmitter implements ServerInterface
 
     private ?string $watcherId = null;
 
+    /**
+     * @param array<string, mixed> $context
+     */
     public function __construct(string $uri, private readonly array $context = [])
     {
         if (is_numeric($uri)) {
@@ -47,14 +50,14 @@ final class TcpServer extends EventEmitter implements ServerInterface
 
         if (str_ends_with($uri, ':0')) {
             $parts = parse_url(substr($uri, 0, -2));
-            if ($parts) {
+            if ($parts !== false) {
                 $parts['port'] = 0;
             }
         } else {
             $parts = parse_url($uri);
         }
 
-        if (! $parts || ! isset($parts['scheme'], $parts['host'], $parts['port']) || $parts['scheme'] !== 'tcp') {
+        if ($parts === false || ! isset($parts['scheme'], $parts['host'], $parts['port']) || $parts['scheme'] !== 'tcp') {
             throw new InvalidUriException(
                 \sprintf('Invalid URI "%s" given', $uri)
             );
@@ -80,13 +83,22 @@ final class TcpServer extends EventEmitter implements ServerInterface
         if ($socket === false) {
             throw new BindFailedException(
                 \sprintf('Failed to listen on "%s": %s', $uri, $errstr),
-                $errno
+                (int) $errno
             );
         }
 
         $this->master = $socket;
         stream_set_blocking($this->master, false);
-        $this->address = stream_socket_get_name($this->master, false);
+
+        $address = stream_socket_get_name($this->master, false);
+        if ($address === false) {
+            throw new BindFailedException(
+                \sprintf('Failed to get socket name for "%s"', $uri),
+                0
+            );
+        }
+
+        $this->address = $address;
         $this->resume();
     }
 
@@ -163,6 +175,9 @@ final class TcpServer extends EventEmitter implements ServerInterface
         }
     }
 
+    /**
+     * @param resource $socket
+     */
     private function handleConnection(mixed $socket): void
     {
         $connection = new Connection($socket);

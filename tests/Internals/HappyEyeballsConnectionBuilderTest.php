@@ -687,6 +687,7 @@ describe('HappyEyeBallsConnectionBuilder', function () {
         $result = $promise->wait();
 
         expect($result)->toBeInstanceOf(ConnectionInterface::class)
-            ->and($mockConnector->connectionAttempts)->toHaveCount(1);
+            ->and($mockConnector->connectionAttempts)->toHaveCount(1)
+        ;
     });
 });

@@ -838,7 +838,8 @@ describe('Connector - Real Network Integration', function () {
             $connection1->close();
 
             expect($connection1->isReadable())->toBeFalse()
-                ->and($connection2->isReadable())->toBeTrue();
+                ->and($connection2->isReadable())->toBeTrue()
+            ;
 
             $connection2->close();
         });

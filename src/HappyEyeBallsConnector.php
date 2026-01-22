@@ -8,9 +8,9 @@ use Hibla\Dns\Interfaces\ResolverInterface;
 use Hibla\Promise\Interfaces\PromiseInterface;
 use Hibla\Promise\Promise;
 use Hibla\Socket\Exceptions\InvalidUriException;
+use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Socket\Interfaces\ConnectorInterface;
 use Hibla\Socket\Internals\HappyEyeBallsConnectionBuilder;
-use Hibla\Socket\Interfaces\ConnectionInterface;
 
 /**
  * Happy Eyeballs Connector (RFC 8305)
@@ -73,7 +73,7 @@ final class HappyEyeBallsConnector implements ConnectorInterface
             $this->ipv6Check
         );
 
-        /** @var Promise<ConnectionInterface>*/
+        /** @var Promise<ConnectionInterface> */
         return $builder->connect();
     }
 }

@@ -23,20 +23,22 @@ final class SecureServer extends EventEmitter implements ServerInterface
     private readonly StreamEncryption $encryption;
 
     /**
-     * @var array<int,mixed>
+     * @var array<string, mixed>
      */
     private readonly array $context;
 
     /**
      * @param ServerInterface $server The underlying plaintext server (usually TcpServer)
-     * @param array $context SSL context options (e.g., 'local_cert', 'passphrase')
+     * @param array<string, mixed> $context SSL context options (e.g., 'local_cert', 'passphrase')
      * @see https://www.php.net/manual/en/context.ssl.php
      */
     public function __construct(
         private readonly ServerInterface $server,
         array $context = []
     ) {
-        $this->context = $context + ['passphrase' => ''];
+        /** @var array<string, mixed> $mergedContext */
+        $mergedContext = $context + ['passphrase' => ''];
+        $this->context = $mergedContext;
 
         $this->encryption = new StreamEncryption(isServer: true);
 
@@ -107,7 +109,11 @@ final class SecureServer extends EventEmitter implements ServerInterface
                 onFulfilled: function (Connection $secureConnection) {
                     $this->emit('connection', [$secureConnection]);
                 },
-                onRejected: function (Throwable $error) use ($connection, $remote) {
+                onRejected: function (mixed $error) use ($connection, $remote): void {
+                    if (! $error instanceof Throwable) {
+                        $error = new EncryptionFailedException('Unknown error during TLS handshake');
+                    }
+
                     $wrappedError = new EncryptionFailedException(
                         \sprintf('Connection from %s failed during TLS handshake: %s', $remote, $error->getMessage()),
                         (int) $error->getCode(),

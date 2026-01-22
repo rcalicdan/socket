@@ -213,7 +213,7 @@ function run_with_timeout(float $seconds): void
 {
     $timer = Loop::addTimer($seconds, function () {
         Loop::stop();
-        test()->fail('Test timed out - check internet connection');
+        test()->fail('Test timed out');
     });
 
     Loop::run();

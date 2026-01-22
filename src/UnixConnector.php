@@ -8,7 +8,6 @@ use Hibla\Promise\Interfaces\PromiseInterface;
 use Hibla\Promise\Promise;
 use Hibla\Socket\Exceptions\ConnectionFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
-use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Socket\Interfaces\ConnectorInterface;
 
 /**
@@ -55,7 +54,7 @@ final class UnixConnector implements ConnectorInterface
 
         $errno = null;
         $errstr = null;
-        
+
         $resource = @stream_socket_client($path, $errno, $errstr, 1.0);
 
         if ($resource === false) {

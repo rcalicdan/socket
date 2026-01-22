@@ -72,7 +72,7 @@ final class StreamEncryption
 
         /** @var Promise<Connection> $promise */
         $promise = new Promise();
-        
+
         /** @var string|null $watcherId */
         $watcherId = null;
 
@@ -84,7 +84,8 @@ final class StreamEncryption
                 if (($pos = strpos($error, '): ')) !== false) {
                     $error = substr($error, $pos + 3);
                 }
-                return true; 
+
+                return true;
             });
 
             $result = stream_socket_enable_crypto($socket, $enable, $method);

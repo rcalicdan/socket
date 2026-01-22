@@ -40,7 +40,7 @@ final class TimeoutConnector implements ConnectorInterface
         $promise = new Promise();
 
         $pendingConnection = $this->connector->connect($uri);
-        
+
         /** @var string|null $timerId */
         $timerId = null;
 

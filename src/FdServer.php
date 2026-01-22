@@ -27,7 +27,7 @@ final class FdServer extends EventEmitter implements ServerInterface
 
     public function __construct(int|string $fd)
     {
-        if (\is_string($fd) && preg_match('#^php://fd/(\d+)$#', $fd, $matches)) {
+        if (\is_string($fd) && preg_match('#^php://fd/(\d+)$#', $fd, $matches) === 1) {
             $fd = (int) $matches[1];
         }
 
@@ -37,9 +37,13 @@ final class FdServer extends EventEmitter implements ServerInterface
             );
         }
 
-        set_error_handler(function (int $code, string $message) use (&$errno, &$errstr) {
+        $errno = 0;
+        $errstr = '';
+        set_error_handler(function (int $code, string $message) use (&$errno, &$errstr): bool {
             $errno = $code;
             $errstr = $message;
+
+            return true;
         });
 
         $resource = fopen('php://fd/' . $fd, 'r+');
@@ -49,7 +53,7 @@ final class FdServer extends EventEmitter implements ServerInterface
         if ($resource === false) {
             throw new BindFailedException(
                 \sprintf('Failed to open file descriptor %d: %s', $fd, $errstr),
-                $errno ?? 0
+                $errno
             );
         }
 
@@ -136,7 +140,7 @@ final class FdServer extends EventEmitter implements ServerInterface
     private function validateSocketResource(int $fd): void
     {
         $meta = stream_get_meta_data($this->master);
-        if (! isset($meta['stream_type']) || ! \in_array($meta['stream_type'], ['tcp_socket', 'unix_socket'], true)) {
+        if (! \in_array($meta['stream_type'], ['tcp_socket', 'unix_socket'], true)) {
             $this->close();
 
             throw new BindFailedException(
@@ -165,6 +169,9 @@ final class FdServer extends EventEmitter implements ServerInterface
         }
     }
 
+    /**
+     * @param resource $socket
+     */
     private function handleConnection(mixed $socket): void
     {
         $connection = new Connection($socket, isUnix: $this->isUnix);

@@ -28,11 +28,12 @@ final class SocketServer extends EventEmitter implements ServerInterface
 
     /**
      * @param string $uri
-     * @param array $context
+     * @param array<string, mixed> $context
      */
-    public function __construct(string $uri, private readonly array $context = [])
+    public function __construct(string $uri, array $context = [])
     {
-        $context = $context + [
+        /** @var array{tcp: array<string, mixed>, tls: array<string, mixed>, unix: array<string, mixed>} $mergedContext */
+        $mergedContext = $context + [
             'tcp' => [],
             'unix' => [],
             'tls' => [],
@@ -40,17 +41,18 @@ final class SocketServer extends EventEmitter implements ServerInterface
 
         $scheme = 'tcp';
         if (str_contains($uri, '://')) {
-            $scheme = substr($uri, 0, strpos($uri, '://'));
+            $pos = strpos($uri, '://');
+            $scheme = $pos !== false ? substr($uri, 0, $pos) : 'tcp';
         } elseif (is_numeric($uri)) {
             $uri = '127.0.0.1:' . $uri;
         }
 
         $this->server = match ($scheme) {
-            'unix' => new UnixServer($uri, $context['unix']),
+            'unix' => new UnixServer($uri, $mergedContext['unix']),
             'php' => new FdServer($uri),
-            'tcp' => new TcpServer($uri, $context['tcp']),
-            'tls' => $this->createSecureServer($uri, $context),
-            default => $this->createDefaultServer($uri, $context),
+            'tcp' => new TcpServer($uri, $mergedContext['tcp']),
+            'tls' => $this->createSecureServer($uri, $mergedContext),
+            default => $this->createDefaultServer($uri, $mergedContext),
         };
 
         $this->server->on('connection', fn (ConnectionInterface $conn) => $this->emit('connection', [$conn]));
@@ -90,6 +92,9 @@ final class SocketServer extends EventEmitter implements ServerInterface
         $this->removeAllListeners();
     }
 
+    /**
+     * @param array{tcp: array<string, mixed>, tls: array<string, mixed>, unix: array<string, mixed>} $context
+     */
     private function createSecureServer(string $uri, array $context): ServerInterface
     {
         $tcpUri = str_replace('tls://', 'tcp://', $uri);
@@ -99,9 +104,12 @@ final class SocketServer extends EventEmitter implements ServerInterface
         return new SecureServer($tcpServer, $context['tls']);
     }
 
+    /**
+     * @param array{tcp: array<string, mixed>, tls: array<string, mixed>, unix: array<string, mixed>} $context
+     */
     private function createDefaultServer(string $uri, array $context): ServerInterface
     {
-        if (preg_match('#^(?:\w+://)?\d+$#', $uri)) {
+        if (preg_match('#^(?:\w+://)?\d+$#', $uri) === 1) {
             throw new InvalidUriException(
                 \sprintf('Invalid URI "%s" given (EINVAL)', $uri),
                 \defined('SOCKET_EINVAL') ? SOCKET_EINVAL : (\defined('PCNTL_EINVAL') ? PCNTL_EINVAL : 22)

@@ -338,6 +338,7 @@ describe('FixedUriConnector', function () {
         expect($mockConnector1->lastUri)->toBe($fixedUri1)
             ->and($mockConnector2->lastUri)->toBe($fixedUri2)
             ->and($result1)->toBe($connection1)
-            ->and($result2)->toBe($connection2);
+            ->and($result2)->toBe($connection2)
+        ;
     });
 });

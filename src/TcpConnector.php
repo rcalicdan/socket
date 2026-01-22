@@ -29,7 +29,8 @@ final class TcpConnector implements ConnectorInterface
      */
     public function __construct(
         private readonly array $context = []
-    ) {}
+    ) {
+    }
 
     /**
      * {@inheritDoc}
