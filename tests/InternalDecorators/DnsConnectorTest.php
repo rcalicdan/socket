@@ -28,7 +28,8 @@ describe('DnsConnector', function () {
 
         expect($result)->toBe($connection)
             ->and($mockConnector->lastUri)->toBe('tcp://127.0.0.1:8080')
-            ->and($mockResolver->resolveCalled)->toBeFalse();
+            ->and($mockResolver->resolveCalled)->toBeFalse()
+        ;
     });
 
     test('connects directly when URI contains IPv6 address', function () {
@@ -44,7 +45,8 @@ describe('DnsConnector', function () {
 
         expect($result)->toBe($connection)
             ->and($mockConnector->lastUri)->toBe('tcp://[::1]:8080')
-            ->and($mockResolver->resolveCalled)->toBeFalse();
+            ->and($mockResolver->resolveCalled)->toBeFalse()
+        ;
     });
 
     test('resolves hostname and connects', function () {
@@ -63,7 +65,8 @@ describe('DnsConnector', function () {
             ->and($mockResolver->resolveCalled)->toBeTrue()
             ->and($mockResolver->lastDomain)->toBe('example.com')
             ->and($mockConnector->lastUri)->toContain('93.184.216.34')
-            ->and($mockConnector->lastUri)->toContain('hostname=example.com');
+            ->and($mockConnector->lastUri)->toContain('hostname=example.com')
+        ;
     });
 
     test('adds scheme when missing', function () {
@@ -79,7 +82,8 @@ describe('DnsConnector', function () {
         $result = $promise->wait();
 
         expect($result)->toBe($connection)
-            ->and($mockResolver->lastDomain)->toBe('example.com');
+            ->and($mockResolver->lastDomain)->toBe('example.com')
+        ;
     });
 
     test('rejects with invalid URI', function () {
@@ -89,8 +93,9 @@ describe('DnsConnector', function () {
 
         $promise = $dnsConnector->connect('://invalid');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(InvalidUriException::class, 'invalid (EINVAL)');
+        expect(fn () => $promise->wait())
+            ->toThrow(InvalidUriException::class, 'invalid (EINVAL)')
+        ;
     });
 
     test('rejects with URI missing host', function () {
@@ -100,8 +105,9 @@ describe('DnsConnector', function () {
 
         $promise = $dnsConnector->connect('tcp://');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(InvalidUriException::class, 'invalid (EINVAL)');
+        expect(fn () => $promise->wait())
+            ->toThrow(InvalidUriException::class, 'invalid (EINVAL)')
+        ;
     });
 
     test('DNS lookup failure propagates', function () {
@@ -114,8 +120,9 @@ describe('DnsConnector', function () {
 
         $promise = $dnsConnector->connect('tcp://nonexistent.example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(ConnectionFailedException::class, 'failed during DNS lookup');
+        expect(fn () => $promise->wait())
+            ->toThrow(ConnectionFailedException::class, 'failed during DNS lookup')
+        ;
     });
 
     test('connection failure after DNS resolution', function () {
@@ -129,8 +136,9 @@ describe('DnsConnector', function () {
 
         $promise = $dnsConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(ConnectionFailedException::class, 'Connection to tcp://example.com:80 failed');
+        expect(fn () => $promise->wait())
+            ->toThrow(ConnectionFailedException::class, 'Connection to tcp://example.com:80 failed')
+        ;
     });
 
     test('delayed DNS resolution success', function () {
@@ -158,8 +166,9 @@ describe('DnsConnector', function () {
 
         $promise = $dnsConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(ConnectionFailedException::class, 'failed during DNS lookup');
+        expect(fn () => $promise->wait())
+            ->toThrow(ConnectionFailedException::class, 'failed during DNS lookup')
+        ;
     });
 
     test('cancellation during DNS lookup', function () {
@@ -207,7 +216,8 @@ describe('DnsConnector', function () {
 
         expect($result)->toBe($connection)
             ->and($mockConnector->lastUri)->toContain('[2001:db8::1]')
-            ->and($mockConnector->lastUri)->toContain('hostname=example.com');
+            ->and($mockConnector->lastUri)->toContain('hostname=example.com')
+        ;
     });
 
     test('preserves port in resolved URI', function () {
@@ -223,7 +233,8 @@ describe('DnsConnector', function () {
         $result = $promise->wait();
 
         expect($result)->toBe($connection)
-            ->and($mockConnector->lastUri)->toContain(':8080');
+            ->and($mockConnector->lastUri)->toContain(':8080')
+        ;
     });
 
     test('preserves URI path and query', function () {
@@ -241,7 +252,8 @@ describe('DnsConnector', function () {
         expect($result)->toBe($connection)
             ->and($mockConnector->lastUri)->toContain('/path')
             ->and($mockConnector->lastUri)->toContain('key=value')
-            ->and($mockConnector->lastUri)->toContain('hostname=example.com');
+            ->and($mockConnector->lastUri)->toContain('hostname=example.com')
+        ;
     });
 
     test('preserves user info in URI', function () {
@@ -257,7 +269,8 @@ describe('DnsConnector', function () {
         $result = $promise->wait();
 
         expect($result)->toBe($connection)
-            ->and($mockConnector->lastUri)->toContain('user:pass@');
+            ->and($mockConnector->lastUri)->toContain('user:pass@')
+        ;
     });
 
     test('promise chaining works correctly', function () {
@@ -272,8 +285,10 @@ describe('DnsConnector', function () {
         $promise = $dnsConnector->connect('tcp://example.com:80')
             ->then(function ($conn) {
                 expect($conn)->toBeInstanceOf(MockConnection::class);
+
                 return 'success';
-            });
+            })
+        ;
 
         $result = $promise->wait();
         expect($result)->toBe('success');
@@ -290,8 +305,10 @@ describe('DnsConnector', function () {
         $promise = $dnsConnector->connect('tcp://example.com:80')
             ->catch(function ($e) {
                 expect($e)->toBeInstanceOf(ConnectionFailedException::class);
+
                 return 'handled';
-            });
+            })
+        ;
 
         $result = $promise->wait();
         expect($result)->toBe('handled');
@@ -331,7 +348,8 @@ describe('DnsConnector', function () {
         $result2 = $dnsConnector->connect('tcp://example.org:80')->wait();
 
         expect($result1)->toBe($connection1)
-            ->and($result2)->toBe($connection2);
+            ->and($result2)->toBe($connection2)
+        ;
     });
 
     test('connection state remains valid after successful connection', function () {
@@ -349,7 +367,8 @@ describe('DnsConnector', function () {
 
         expect($result->isReadable())->toBeTrue()
             ->and($result->isWritable())->toBeTrue()
-            ->and($result->isClosed())->toBeFalse();
+            ->and($result->isClosed())->toBeFalse()
+        ;
     });
 
     test('finally handler executes on success', function () {
@@ -365,7 +384,8 @@ describe('DnsConnector', function () {
         $promise = $dnsConnector->connect('tcp://example.com:80')
             ->finally(function () use (&$finallyCalled) {
                 $finallyCalled = true;
-            });
+            })
+        ;
 
         $promise->wait();
 
@@ -384,7 +404,8 @@ describe('DnsConnector', function () {
         $promise = $dnsConnector->connect('tcp://example.com:80')
             ->finally(function () use (&$finallyCalled) {
                 $finallyCalled = true;
-            });
+            })
+        ;
 
         try {
             $promise->wait();
@@ -408,22 +429,24 @@ describe('DnsConnector', function () {
         $result = $promise->wait();
 
         expect($result)->toBe($connection)
-            ->and($mockConnector->lastUri)->toContain('hostname=sub.example.com');
+            ->and($mockConnector->lastUri)->toContain('hostname=sub.example.com')
+        ;
     });
 
     test('wraps non-ConnectionFailedException as generic connection error', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolver();
         $dnsConnector = new DnsConnector($mockConnector, $mockResolver);
-        $error = new \RuntimeException('Some other error');
+        $error = new RuntimeException('Some other error');
 
         $mockResolver->setImmediateSuccess('93.184.216.34');
         $mockConnector->setImmediateFailure($error);
 
         $promise = $dnsConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(\RuntimeException::class, 'Some other error');
+        expect(fn () => $promise->wait())
+            ->toThrow(RuntimeException::class, 'Some other error')
+        ;
     });
 
     test('exception code is preserved for EINVAL', function () {
@@ -435,7 +458,8 @@ describe('DnsConnector', function () {
 
         try {
             $promise->wait();
-            throw new \Exception('Expected InvalidUriException to be thrown');
+
+            throw new Exception('Expected InvalidUriException to be thrown');
         } catch (InvalidUriException $e) {
             $expectedCode = defined('SOCKET_EINVAL') ? SOCKET_EINVAL : (defined('PCNTL_EINVAL') ? PCNTL_EINVAL : 22);
             expect($e->getCode())->toBe($expectedCode);
@@ -452,8 +476,9 @@ describe('DnsConnector', function () {
         $promise = $dnsConnector->connect('tcp://example.com:80');
         $promise->cancel();
 
-        expect(fn() => $promise->wait())
-            ->toThrow(PromiseCancelledException::class, 'Cannot wait on a cancelled promise');
+        expect(fn () => $promise->wait())
+            ->toThrow(PromiseCancelledException::class, 'Cannot wait on a cancelled promise')
+        ;
     });
 });
 
@@ -462,7 +487,8 @@ describe('DnsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1', '1.0.0.1'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
 
@@ -475,7 +501,8 @@ describe('DnsConnector - Real Network Integration', function () {
         expect($connection)
             ->toBeInstanceOf(ConnectionInterface::class)
             ->and($connection->isReadable())->toBeTrue()
-            ->and($connection->isWritable())->toBeTrue();
+            ->and($connection->isWritable())->toBeTrue()
+        ;
 
         $connection->close();
     });
@@ -484,7 +511,8 @@ describe('DnsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['8.8.8.8', '8.8.4.4'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
@@ -495,7 +523,8 @@ describe('DnsConnector - Real Network Integration', function () {
         expect($connection)
             ->toBeInstanceOf(ConnectionInterface::class)
             ->and($connection->isReadable())->toBeTrue()
-            ->and($connection->isWritable())->toBeTrue();
+            ->and($connection->isWritable())->toBeTrue()
+        ;
 
         $connection->close();
     });
@@ -504,21 +533,24 @@ describe('DnsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
 
         $promise = $dnsConnector->connect('tcp://this-domain-definitely-does-not-exist-12345.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(ConnectionFailedException::class);
+        expect(fn () => $promise->wait())
+            ->toThrow(ConnectionFailedException::class)
+        ;
     });
 
     test('connects directly to IP address without DNS lookup', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1'])
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
@@ -529,7 +561,8 @@ describe('DnsConnector - Real Network Integration', function () {
         expect($connection)
             ->toBeInstanceOf(ConnectionInterface::class)
             ->and($connection->isReadable())->toBeTrue()
-            ->and($connection->isWritable())->toBeTrue();
+            ->and($connection->isWritable())->toBeTrue()
+        ;
 
         $connection->close();
     });
@@ -537,7 +570,8 @@ describe('DnsConnector - Real Network Integration', function () {
     test('resolves IPv6 address and connects', function () {
         $resolver = Dns::new()
             ->withNameservers(['2606:4700:4700::1111', '2606:4700:4700::1001'])->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);
@@ -548,7 +582,8 @@ describe('DnsConnector - Real Network Integration', function () {
             $connection = $promise->wait();
 
             expect($connection)
-                ->toBeInstanceOf(ConnectionInterface::class);
+                ->toBeInstanceOf(ConnectionInterface::class)
+            ;
 
             $connection->close();
         } catch (ConnectionFailedException $e) {
@@ -561,7 +596,8 @@ describe('DnsConnector - Real Network Integration', function () {
             ->withNameservers(['1.1.1.1'])
             ->withTimeout(5.0)
             ->withCache()
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $dnsConnector = new DnsConnector($tcpConnector, $resolver);

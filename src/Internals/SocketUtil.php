@@ -8,7 +8,7 @@ use Hibla\Socket\Exceptions\AcceptFailedException;
 
 /**
  * @internal
- * 
+ *
  * A collection of internal, low-level socket utility functions.
  * This class is not part of the public API and may change at any time.
  */
@@ -16,7 +16,9 @@ final class SocketUtil
 {
     private static bool $extSocketsAvailable;
 
-    private function __construct() {}
+    private function __construct()
+    {
+    }
 
     /**
      * Accepts a new connection from a given server socket.
@@ -27,7 +29,7 @@ final class SocketUtil
      */
     public static function accept(mixed $socket): mixed
     {
-        set_error_handler(static fn() => true);
+        set_error_handler(static fn () => true);
 
         try {
             $newSocket = stream_socket_accept($socket, 0, $peerName);
@@ -43,6 +45,7 @@ final class SocketUtil
 
         if ($newSocket === false) {
             $error = self::getLastSocketError();
+
             throw new AcceptFailedException(
                 'Unable to accept new connection: ' . $error['message'],
                 $error['code']
@@ -67,6 +70,7 @@ final class SocketUtil
             $errno = socket_last_error();
             $errstr = socket_strerror($errno);
             socket_clear_error();
+
             return ['code' => $errno, 'message' => $errstr];
         }
 

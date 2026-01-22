@@ -100,7 +100,7 @@ final class Connector implements ConnectorInterface
     {
         $scheme = $this->extractScheme($uri);
 
-        if (!isset($this->connectors[$scheme])) {
+        if (! isset($this->connectors[$scheme])) {
             return Promise::rejected(new InvalidUriException(
                 \sprintf('No connector available for URI scheme "%s" (EINVAL)', $scheme),
                 \defined('SOCKET_EINVAL') ? SOCKET_EINVAL : (\defined('PCNTL_EINVAL') ? PCNTL_EINVAL : 22)
@@ -112,7 +112,7 @@ final class Connector implements ConnectorInterface
 
     private function extractScheme(string $uri): string
     {
-        if (!str_contains($uri, '://')) {
+        if (! str_contains($uri, '://')) {
             return 'tcp';
         }
 

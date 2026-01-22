@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Hibla\EventLoop\Loop;
 use Hibla\Socket\Exceptions\BindFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
@@ -17,7 +19,7 @@ describe('Socket Server', function () {
         }
 
         $certFile = generate_temp_cert();
-        
+
         Loop::reset();
     });
 
@@ -66,7 +68,8 @@ describe('Socket Server', function () {
             $address = $server->getAddress();
 
             expect($address)->not->toBeNull()
-                ->and($address)->not->toContain(':0');
+                ->and($address)->not->toContain(':0')
+            ;
 
             $port = parse_url($address, PHP_URL_PORT);
             expect($port)->toBeGreaterThan(0);
@@ -88,7 +91,8 @@ describe('Socket Server', function () {
             run_with_timeout(1.0);
 
             expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
-                ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
+                ->and($connectionReceived->getRemoteAddress())->not->toBeNull()
+            ;
         });
 
         it('accepts multiple connections', function () use (&$server, &$clients) {
@@ -140,7 +144,7 @@ describe('Socket Server', function () {
         });
 
         it('throws InvalidUriException for invalid numeric-only URI', function () {
-            expect(fn() => new SocketServer('999999'))->toThrow(InvalidUriException::class);
+            expect(fn () => new SocketServer('999999'))->toThrow(InvalidUriException::class);
         });
 
         it('constructs with 0.0.0.0 to listen on all interfaces', function () use (&$server) {
@@ -156,7 +160,7 @@ describe('Socket Server', function () {
             $server = new SocketServer('127.0.0.1:' . $port);
 
             set_error_handler(function () {});
-            expect(fn() => new SocketServer('127.0.0.1:' . $port))->toThrow(BindFailedException::class);
+            expect(fn () => new SocketServer('127.0.0.1:' . $port))->toThrow(BindFailedException::class);
             restore_error_handler();
         })->skipOnWindows();
 
@@ -184,12 +188,13 @@ describe('Socket Server', function () {
                 }
             }
 
-            Loop::addTimer(0.5, fn() => Loop::stop());
-            
+            Loop::addTimer(0.5, fn () => Loop::stop());
+
             run_with_timeout(2.0);
 
             expect($connectionCount)->toBe(10)
-                ->and($closeCount)->toBeGreaterThan(0);
+                ->and($closeCount)->toBeGreaterThan(0)
+            ;
         });
 
         it('handles connection when server is at different binding stages', function () use (&$server, &$clients) {
@@ -244,7 +249,7 @@ describe('Socket Server', function () {
             });
 
             $server->on('error', function ($error) {
-                echo "Error: " . $error->getMessage() . "\n";
+                echo 'Error: ' . $error->getMessage() . "\n";
             });
 
             Loop::addTimer(0.05, function () use ($port, &$clients) {
@@ -254,7 +259,8 @@ describe('Socket Server', function () {
             run_with_timeout(5.0);
 
             expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
-                ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
+                ->and($connectionReceived->getRemoteAddress())->not->toBeNull()
+            ;
         });
 
         it('accepts multiple encrypted connections', function () use (&$server, &$clients, &$certFile) {
@@ -274,7 +280,7 @@ describe('Socket Server', function () {
             });
 
             $server->on('error', function ($error) {
-                echo "Error: " . $error->getMessage() . "\n";
+                echo 'Error: ' . $error->getMessage() . "\n";
             });
 
             Loop::addTimer(0.05, function () use ($port, &$clients) {
@@ -301,12 +307,12 @@ describe('Socket Server', function () {
             $server->on('connection', function (ConnectionInterface $connection) use (&$dataReceived) {
                 $connection->on('data', function ($data) use (&$dataReceived, $connection) {
                     $dataReceived = $data;
-                    $connection->write("Echo: " . $data);
+                    $connection->write('Echo: ' . $data);
                 });
             });
 
             $server->on('error', function ($error) {
-                echo "Error: " . $error->getMessage() . "\n";
+                echo 'Error: ' . $error->getMessage() . "\n";
             });
 
             Loop::addTimer(0.05, function () use ($port, &$clients, &$clientData) {
@@ -343,7 +349,7 @@ describe('Socket Server', function () {
                             $handshakeComplete = true;
 
                             fwrite($client, "Hello Secure World\n");
-                            
+
                             Loop::addTimer(0.5, function () use ($client, &$clientData) {
                                 $clientData = @fread($client, 1024);
                                 Loop::stop();
@@ -371,7 +377,8 @@ describe('Socket Server', function () {
             run_with_timeout(5.0);
 
             expect($dataReceived)->toBe("Hello Secure World\n")
-                ->and($clientData)->toBe("Echo: Hello Secure World\n");
+                ->and($clientData)->toBe("Echo: Hello Secure World\n")
+            ;
         });
 
         it('handles TLS handshake failure gracefully', function () use (&$server, &$clients, &$certFile) {
@@ -516,8 +523,8 @@ describe('Socket Server', function () {
                 }
             }
 
-            Loop::addTimer(0.2, fn() => Loop::stop());
-            
+            Loop::addTimer(0.2, fn () => Loop::stop());
+
             run_with_timeout(1.0);
 
             expect($connectionCount)->toBe(15);
@@ -659,7 +666,8 @@ describe('Socket Server', function () {
             })->call($server);
 
             expect($errorReceived)->toBeInstanceOf(RuntimeException::class)
-                ->and($errorReceived->getMessage())->toBe('Test error');
+                ->and($errorReceived->getMessage())->toBe('Test error')
+            ;
         });
 
         it('handles multiple pause/resume cycles', function () use (&$server, &$clients) {
@@ -690,7 +698,7 @@ describe('Socket Server', function () {
             $server = new SocketServer('tcp://127.0.0.1:' . $port);
 
             $server->close();
-            $server->close(); 
+            $server->close();
             $server->close();
 
             expect($server->getAddress())->toBeNull();
@@ -811,7 +819,7 @@ describe('Socket Server', function () {
             $receivedData = null;
             $watcherId = null;
 
-            $watcherId = Loop::addReadWatcher($client, function($resource) use ($client, &$receivedData, &$watcherId) {
+            $watcherId = Loop::addReadWatcher($client, function ($resource) use ($client, &$receivedData, &$watcherId) {
                 $receivedData = fread($client, 1024);
                 if ($watcherId) {
                     Loop::removeReadWatcher($watcherId);
@@ -836,7 +844,7 @@ describe('Socket Server', function () {
                 });
 
                 Loop::addTimer(0.01, function () use (&$clients) {
-                    if (!empty($clients) && is_resource(end($clients))) {
+                    if (! empty($clients) && is_resource(end($clients))) {
                         fclose(end($clients));
                         array_pop($clients);
                     }
@@ -886,7 +894,7 @@ describe('Socket Server', function () {
             $server->on('connection', function (ConnectionInterface $connection) use (&$serverReceived) {
                 $connection->on('data', function ($data) use (&$serverReceived, $connection) {
                     $serverReceived = $data;
-                    $connection->write("Server got: " . $data);
+                    $connection->write('Server got: ' . $data);
                 });
             });
 
@@ -901,16 +909,19 @@ describe('Socket Server', function () {
 
             $client = end($clients);
             $watcherId = null;
-            $watcherId = Loop::addReadWatcher($client, function($resource) use ($client, &$clientReceived, &$watcherId) {
+            $watcherId = Loop::addReadWatcher($client, function ($resource) use ($client, &$clientReceived, &$watcherId) {
                 $clientReceived = fread($client, 1024);
-                if ($watcherId) Loop::removeReadWatcher($watcherId);
+                if ($watcherId) {
+                    Loop::removeReadWatcher($watcherId);
+                }
                 Loop::stop();
             });
 
             run_with_timeout(1.0);
 
             expect($serverReceived)->toBe("Client message\n")
-                ->and($clientReceived)->toBe("Server got: Client message\n");
+                ->and($clientReceived)->toBe("Server got: Client message\n")
+            ;
         });
 
         it('handles connection close event', function () use (&$server, &$clients) {
@@ -937,23 +948,23 @@ describe('Socket Server', function () {
 
     describe('Edge cases and error handling', function () use (&$server, &$clients) {
         it('throws InvalidUriException for empty URI', function () {
-            expect(fn() => new SocketServer(''))->toThrow(InvalidUriException::class);
+            expect(fn () => new SocketServer(''))->toThrow(InvalidUriException::class);
         });
 
         it('throws InvalidUriException for whitespace-only URI', function () {
-            expect(fn() => new SocketServer('   '))->toThrow(InvalidUriException::class);
+            expect(fn () => new SocketServer('   '))->toThrow(InvalidUriException::class);
         });
 
         it('throws InvalidUriException for invalid scheme', function () {
-            expect(fn() => new SocketServer('http://127.0.0.1:8080'))->toThrow(InvalidUriException::class);
+            expect(fn () => new SocketServer('http://127.0.0.1:8080'))->toThrow(InvalidUriException::class);
         });
 
         it('throws InvalidUriException for malformed URI', function () {
-            expect(fn() => new SocketServer('tcp://:8080'))->toThrow(InvalidUriException::class);
+            expect(fn () => new SocketServer('tcp://:8080'))->toThrow(InvalidUriException::class);
         });
 
         it('throws InvalidUriException for invalid port', function () {
-            expect(fn() => new SocketServer('127.0.0.1:99999'))->toThrow(InvalidUriException::class);
+            expect(fn () => new SocketServer('127.0.0.1:99999'))->toThrow(InvalidUriException::class);
         });
 
         it('handles connection from localhost vs 127.0.0.1', function () use (&$server, &$clients) {
@@ -996,8 +1007,8 @@ describe('Socket Server', function () {
             $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
             expect(end($clients))->toBeResource();
 
-            Loop::addTimer(0.1, fn() => Loop::stop());
-            
+            Loop::addTimer(0.1, fn () => Loop::stop());
+
             run_with_timeout(1.0);
 
             expect(true)->toBeTrue();
@@ -1019,7 +1030,7 @@ describe('Socket Server', function () {
             try {
                 $clients[] = @stream_socket_client($server->getAddress(), $errno, $errstr, 1);
 
-                Loop::addTimer(0.1, fn() => Loop::stop());
+                Loop::addTimer(0.1, fn () => Loop::stop());
 
                 run_with_timeout(1.0);
             } catch (RuntimeException $e) {
@@ -1040,8 +1051,8 @@ describe('Socket Server', function () {
 
                 $connection->on('data', function ($data) use (&$dataCount, $connection) {
                     $dataCount++;
-                    $connection->write("Echo: " . $data);
-                    
+                    $connection->write('Echo: ' . $data);
+
                     if ($dataCount === 20) {
                         Loop::stop();
                     }

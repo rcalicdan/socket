@@ -9,7 +9,7 @@ use Hibla\Socket\Exceptions\InvalidUriException;
 use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Socket\UnixConnector;
 
-describe("Unix Connector", function () {
+describe('Unix Connector', function () {
     describe('URI validation', function () {
         it('accepts unix:// scheme', function () {
             $tempDir = sys_get_temp_dir() . '/hibla-test-' . uniqid();
@@ -27,7 +27,7 @@ describe("Unix Connector", function () {
                 $connector = new UnixConnector();
                 $promise = $connector->connect('unix://' . $socketPath);
 
-                expect($promise)->toBeInstanceOf(\Hibla\Promise\Interfaces\PromiseInterface::class);
+                expect($promise)->toBeInstanceOf(Hibla\Promise\Interfaces\PromiseInterface::class);
             } finally {
                 fclose($server);
                 unlink($socketPath);
@@ -51,7 +51,7 @@ describe("Unix Connector", function () {
                 $connector = new UnixConnector();
                 $promise = $connector->connect($socketPath);
 
-                expect($promise)->toBeInstanceOf(\Hibla\Promise\Interfaces\PromiseInterface::class);
+                expect($promise)->toBeInstanceOf(Hibla\Promise\Interfaces\PromiseInterface::class);
             } finally {
                 fclose($server);
                 unlink($socketPath);
@@ -62,15 +62,17 @@ describe("Unix Connector", function () {
         it('rejects invalid scheme', function () {
             $connector = new UnixConnector();
 
-            expect(fn() => $connector->connect('tcp:///invalid'))
-                ->toThrow(InvalidUriException::class, 'is invalid');
+            expect(fn () => $connector->connect('tcp:///invalid'))
+                ->toThrow(InvalidUriException::class, 'is invalid')
+            ;
         });
 
         it('rejects http scheme', function () {
             $connector = new UnixConnector();
 
-            expect(fn() => $connector->connect('http:///invalid'))
-                ->toThrow(InvalidUriException::class, 'expected format: unix://');
+            expect(fn () => $connector->connect('http:///invalid'))
+                ->toThrow(InvalidUriException::class, 'expected format: unix://')
+            ;
         });
     });
 
@@ -83,6 +85,7 @@ describe("Unix Connector", function () {
 
             try {
                 $promise->wait();
+
                 throw new Exception('Should have thrown');
             } catch (ConnectionFailedException $e) {
                 expect($e->getMessage())->toContain('does not exist');
@@ -102,6 +105,7 @@ describe("Unix Connector", function () {
 
                 try {
                     $promise->wait();
+
                     throw new Exception('Should have thrown');
                 } catch (ConnectionFailedException $e) {
                     expect($e->getMessage())->toContain('not a valid Unix domain socket');
@@ -124,6 +128,7 @@ describe("Unix Connector", function () {
 
                 try {
                     $promise->wait();
+
                     throw new Exception('Should have thrown');
                 } catch (ConnectionFailedException $e) {
                     expect($e->getMessage())->toContain('not a valid Unix domain socket');
@@ -158,6 +163,7 @@ describe("Unix Connector", function () {
 
                 try {
                     $promise->wait();
+
                     throw new Exception('Should have thrown');
                 } catch (ConnectionFailedException $e) {
                     expect($e->getMessage())->toContain('not a valid Unix domain socket');
@@ -246,7 +252,8 @@ describe("Unix Connector", function () {
                     ->then(function ($conn) use (&$resolved, &$connection) {
                         $resolved = true;
                         $connection = $conn;
-                    });
+                    })
+                ;
 
                 Loop::runOnce();
 
@@ -496,7 +503,7 @@ describe("Unix Connector", function () {
                     $promises[] = $connector->connect($socketPath);
                 }
 
-                $connections = array_map(fn($p) => $p->wait(), $promises);
+                $connections = array_map(fn ($p) => $p->wait(), $promises);
 
                 expect($connections)->toHaveCount(10);
                 foreach ($connections as $connection) {

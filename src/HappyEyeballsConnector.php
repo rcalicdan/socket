@@ -13,10 +13,10 @@ use Hibla\Socket\Internals\HappyEyeBallsConnectionBuilder;
 
 /**
  * Happy Eyeballs Connector (RFC 8305)
- * 
+ *
  * Implements dual-stack connection establishment that attempts both IPv6 and IPv4
  * connections in parallel to minimize user-visible delays.
- * 
+ *
  * @example Basic usage
  * ```php
  * $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -29,7 +29,8 @@ final class HappyEyeBallsConnector implements ConnectorInterface
         private readonly ConnectorInterface $connector,
         private readonly ResolverInterface $resolver,
         private readonly bool $ipv6Check = false
-    ) {}
+    ) {
+    }
 
     /**
      * {@inheritdoc}
@@ -38,7 +39,7 @@ final class HappyEyeBallsConnector implements ConnectorInterface
     {
         $original = $uri;
 
-        if (!str_contains($uri, '://')) {
+        if (! str_contains($uri, '://')) {
             $uri = 'tcp://' . $uri;
             $parts = parse_url($uri);
             if (isset($parts['scheme'])) {
@@ -48,7 +49,7 @@ final class HappyEyeBallsConnector implements ConnectorInterface
             $parts = parse_url($uri);
         }
 
-        if ($parts === false || !isset($parts['host'])) {
+        if ($parts === false || ! isset($parts['host'])) {
             return Promise::rejected(new InvalidUriException(
                 \sprintf('Given URI "%s" is invalid (EINVAL)', $original),
                 \defined('SOCKET_EINVAL') ? SOCKET_EINVAL : (\defined('PCNTL_EINVAL') ? PCNTL_EINVAL : 22)

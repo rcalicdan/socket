@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Hibla\EventLoop\Loop;
 use Hibla\Socket\Exceptions\AddressInUseException;
 use Hibla\Socket\Exceptions\InvalidUriException;
@@ -54,15 +56,15 @@ describe('Unix Server', function () {
     });
 
     it('throws an exception for invalid URI scheme', function () {
-        expect(fn() => new UnixServer('tcp://localhost:0'))->toThrow(InvalidUriException::class);
-        expect(fn() => new UnixServer('http://example.com'))->toThrow(InvalidUriException::class);
+        expect(fn () => new UnixServer('tcp://localhost:0'))->toThrow(InvalidUriException::class);
+        expect(fn () => new UnixServer('http://example.com'))->toThrow(InvalidUriException::class);
     });
 
     it('throws an exception when the socket path is already in use', function () use (&$socketPath, &$server) {
         $server = new UnixServer($socketPath);
 
         set_error_handler(function () {});
-        expect(fn() => new UnixServer($socketPath))->toThrow(AddressInUseException::class);
+        expect(fn () => new UnixServer($socketPath))->toThrow(AddressInUseException::class);
         restore_error_handler();
     });
 
@@ -163,7 +165,7 @@ describe('Unix Server', function () {
             $server->resume();
         });
 
-        $timeout = Loop::addTimer(0.5, fn() => Loop::stop());
+        $timeout = Loop::addTimer(0.5, fn () => Loop::stop());
 
         Loop::run();
 
@@ -257,7 +259,7 @@ describe('Unix Server', function () {
             });
 
             Loop::addTimer(0.01, function () use (&$clients) {
-                if (!empty($clients) && is_resource(end($clients))) {
+                if (! empty($clients) && is_resource(end($clients))) {
                     fclose(end($clients));
                     array_pop($clients);
                 }
@@ -443,7 +445,7 @@ describe('Unix Server', function () {
         $server->on('connection', function (ConnectionInterface $connection) use (&$serverReceived) {
             $connection->on('data', function ($data) use (&$serverReceived, $connection) {
                 $serverReceived = $data;
-                $connection->write("Echo: " . $data);
+                $connection->write('Echo: ' . $data);
             });
         });
 
@@ -470,6 +472,7 @@ describe('Unix Server', function () {
         $response = fread($client, 1024);
 
         expect($serverReceived)->toBe("Test message\n")
-            ->and($response)->toBe("Echo: Test message\n");
+            ->and($response)->toBe("Echo: Test message\n")
+        ;
     });
 })->skipOnWindows();

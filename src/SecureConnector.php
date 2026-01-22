@@ -45,12 +45,12 @@ final class SecureConnector implements ConnectorInterface
      */
     public function connect(string $uri): PromiseInterface
     {
-        if (!str_contains($uri, '://')) {
+        if (! str_contains($uri, '://')) {
             $uri = 'tls://' . $uri;
         }
 
         $parts = parse_url($uri);
-        if (!$parts || !isset($parts['scheme']) || $parts['scheme'] !== 'tls') {
+        if (! $parts || ! isset($parts['scheme']) || $parts['scheme'] !== 'tls') {
             throw new InvalidUriException(
                 \sprintf('Given URI "%s" is invalid (EINVAL)', $uri)
             );
@@ -70,12 +70,14 @@ final class SecureConnector implements ConnectorInterface
             onFulfilled: function (ConnectionInterface $connection) use ($promise, $uri, &$currentPendingOperation) {
                 if ($promise->isCancelled()) {
                     $connection->close();
+
                     return;
                 }
 
-                if (!$connection instanceof Connection) {
+                if (! $connection instanceof Connection) {
                     $connection->close();
                     $promise->reject(new UnexpectedValueException('Base connector does not use internal Connection class'));
+
                     return;
                 }
 

@@ -7,13 +7,13 @@ namespace Hibla\Socket\Internals;
 /**
  * Internal utility to detect if the environment has a routable IPv6 stack.
  * Results are cached to avoid repeated socket operations.
- * 
+ *
  * @internal
  */
 final class IPv6ConnectivityChecker
 {
     /**
-     *  Cache TTL in seconds 
+     *  Cache TTL in seconds
      */
     private const int CACHE_TTL = 60;
 
@@ -27,7 +27,7 @@ final class IPv6ConnectivityChecker
     private static ?int $lastCheck = null;
 
     /**
-     *  @var bool|null Override for testing purposes 
+     *  @var bool|null Override for testing purposes
      */
     private static ?bool $forced = null;
 
@@ -67,6 +67,7 @@ final class IPv6ConnectivityChecker
 
         if ($socket !== false) {
             fclose($socket);
+
             return true;
         }
 
@@ -76,7 +77,7 @@ final class IPv6ConnectivityChecker
     /**
      * Force the checker to return a specific boolean value.
      * Useful for unit testing to simulate IPv6 availability.
-     * 
+     *
      * @param bool|null $routable Pass null to disable the force override.
      */
     public static function forceValue(?bool $routable): void

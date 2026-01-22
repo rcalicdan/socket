@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Hibla\EventLoop\Loop;
 use Hibla\Socket\Exceptions\EncryptionFailedException;
 use Hibla\Socket\Interfaces\ConnectionInterface;
@@ -78,7 +80,7 @@ describe('Secure Server', function () {
         });
 
         $server->on('error', function ($error) {
-            echo "Error: " . $error->getMessage() . "\n";
+            echo 'Error: ' . $error->getMessage() . "\n";
         });
 
         Loop::addTimer(0.05, function () use ($port, &$clients) {
@@ -88,7 +90,8 @@ describe('Secure Server', function () {
         run_with_timeout(5.0);
 
         expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
-            ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
+            ->and($connectionReceived->getRemoteAddress())->not->toBeNull()
+        ;
     });
 
     it('accepts multiple encrypted connections', function () use (&$server, &$clients, &$certFile) {
@@ -109,7 +112,7 @@ describe('Secure Server', function () {
         });
 
         $server->on('error', function ($error) {
-            echo "Error: " . $error->getMessage() . "\n";
+            echo 'Error: ' . $error->getMessage() . "\n";
         });
 
         Loop::addTimer(0.05, function () use ($port, &$clients) {
@@ -140,7 +143,7 @@ describe('Secure Server', function () {
         });
 
         $server->on('error', function ($error) {
-            echo "Error: " . $error->getMessage() . "\n";
+            echo 'Error: ' . $error->getMessage() . "\n";
         });
 
         $server->pause();
@@ -212,12 +215,12 @@ describe('Secure Server', function () {
         $server->on('connection', function (ConnectionInterface $connection) use (&$dataReceived) {
             $connection->on('data', function ($data) use (&$dataReceived, $connection) {
                 $dataReceived = $data;
-                $connection->write("Echo: " . $data);
+                $connection->write('Echo: ' . $data);
             });
         });
 
         $server->on('error', function ($error) {
-            echo "Error: " . $error->getMessage() . "\n";
+            echo 'Error: ' . $error->getMessage() . "\n";
         });
 
         Loop::addTimer(0.05, function () use ($port, &$clients, &$clientData) {
@@ -282,7 +285,8 @@ describe('Secure Server', function () {
         run_with_timeout(5.0);
 
         expect($dataReceived)->toBe("Hello Secure World\n")
-            ->and($clientData)->toBe("Echo: Hello Secure World\n");
+            ->and($clientData)->toBe("Echo: Hello Secure World\n")
+        ;
     });
 
     it('closes server and underlying TCP server', function () use (&$server, &$certFile) {
@@ -302,7 +306,8 @@ describe('Secure Server', function () {
         $address3 = $tcpServer->getAddress();
 
         expect($address2)->toBeNull()
-            ->and($address3)->toBeNull();
+            ->and($address3)->toBeNull()
+        ;
     });
 
     it('handles connection close event', function () use (&$server, &$clients, &$certFile) {
@@ -323,7 +328,7 @@ describe('Secure Server', function () {
         });
 
         $server->on('error', function ($error) {
-            echo "Error: " . $error->getMessage() . "\n";
+            echo 'Error: ' . $error->getMessage() . "\n";
         });
 
         $clientRef = null;
@@ -411,7 +416,7 @@ describe('Secure Server', function () {
         });
 
         $server->on('error', function ($error) {
-            echo "Error: " . $error->getMessage() . "\n";
+            echo 'Error: ' . $error->getMessage() . "\n";
         });
 
         Loop::addTimer(0.05, function () use ($port, &$clients) {
@@ -470,6 +475,7 @@ describe('Secure Server', function () {
         $tcpServer->emit('error', [new RuntimeException('Test error')]);
 
         expect($errorReceived)->toBeInstanceOf(RuntimeException::class)
-            ->and($errorReceived->getMessage())->toBe('Test error');
+            ->and($errorReceived->getMessage())->toBe('Test error')
+        ;
     });
 });

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use Hibla\EventLoop\Loop;
 use Hibla\HttpClient\Http;
-use Hibla\Socket\Connector;
-use Hibla\Promise\Promise;
 use Hibla\Promise\Interfaces\PromiseInterface;
+use Hibla\Promise\Promise;
+use Hibla\Socket\Connector;
 use Hibla\Socket\Interfaces\ConnectionInterface;
 
 class SimpleHttpClient
@@ -33,10 +32,10 @@ class SimpleHttpClient
     public function get(string $url): PromiseInterface
     {
         $requestId = ++self::$requestCounter;
-        
+
         $parts = parse_url($url);
 
-        if (!$parts || !isset($parts['host'])) {
+        if (! $parts || ! isset($parts['host'])) {
             return Promise::rejected(new InvalidArgumentException('Invalid URL'));
         }
 
@@ -49,12 +48,13 @@ class SimpleHttpClient
         $uri = ($scheme === 'https' ? 'tls' : 'tcp') . "://{$host}:{$port}";
 
         return $this->connector->connect($uri)
-            ->then(function($connection) use ($host, $path, $query, $requestId, $url) {
+            ->then(function ($connection) use ($host, $path, $query, $requestId, $url) {
                 return $this->sendRequest($connection, $host, $path, $query, $requestId);
             })
-            ->catch(function($error) use ($requestId, $url) {
+            ->catch(function ($error) use ($requestId, $url) {
                 throw $error;
-            });
+            })
+        ;
     }
 
     /**
@@ -92,7 +92,7 @@ class SimpleHttpClient
             try {
                 $parsed = $this->parseResponse($responseData);
                 $promise->resolve($parsed);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $promise->reject($e);
             } finally {
                 $connection->close();
@@ -109,7 +109,7 @@ class SimpleHttpClient
                 try {
                     $parsed = $this->parseResponse($responseData);
                     $promise->resolve($parsed);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     $promise->reject($e);
                 }
             }
@@ -160,12 +160,13 @@ class SimpleHttpClient
             $body = $this->decodeChunked($body);
         }
 
-        return new class($status, $headers, $body) {
+        return new class ($status, $headers, $body) {
             public function __construct(
                 public readonly int $status,
                 public readonly array $headers,
                 public readonly string $body
-            ) {}
+            ) {
+            }
 
             public function json(bool $associative = false): mixed
             {
@@ -175,6 +176,7 @@ class SimpleHttpClient
             public function isJson(): bool
             {
                 $contentType = $this->headers['Content-Type'] ?? '';
+
                 return str_contains($contentType, 'application/json');
             }
 
@@ -195,10 +197,14 @@ class SimpleHttpClient
 
         while ($offset < strlen($data)) {
             $crlfPos = strpos($data, "\r\n", $offset);
-            if ($crlfPos === false) break;
+            if ($crlfPos === false) {
+                break;
+            }
 
             $chunkSize = hexdec(substr($data, $offset, $crlfPos - $offset));
-            if ($chunkSize === 0) break;
+            if ($chunkSize === 0) {
+                break;
+            }
 
             $offset = $crlfPos + 2;
             $decoded .= substr($data, $offset, $chunkSize);
@@ -213,11 +219,14 @@ $client = new SimpleHttpClient();
 
 $start = microtime(true);
 
-$client->get('https://httpbin.org/delay/10')
-    ->then(function ($response) {
-        echo "✓ Delay 1 - SUCCESS (HTTP {$response->status})\n";
-    })
-    ->catch(function (\Throwable $e) {
-        echo "✗ Delay 1 - FAILED: {$e->getMessage()}\n";
-    });
+Promise::all([
+    $client->get('https://jsonplaceholder.typicode.com/todos/1'),
+    $client->get('https://jsonplaceholder.typicode.com/todos/2'),
+    $client->get('https://jsonplaceholder.typicode.com/todos/3'),
+    $client->get('https://jsonplaceholder.typicode.com/todos/4'),
+    $client->get('https://jsonplaceholder.typicode.com/todos/5'),
+])->wait();
 
+$end = microtime(true);
+$elapsed = $end - $start;
+echo "Total elapsed time: {$elapsed} seconds\n";

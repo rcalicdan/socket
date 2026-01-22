@@ -17,13 +17,13 @@
         "hiblaphp/event-loop": "dev-main",
         "hiblaphp/stream": "dev-main",
         "hiblaphp/promise": "dev-main",
-        "hiblaphp/dns": "dev-main",
-        "hiblaphp/http-client": "dev-main",
-        "react/socket": "^1.17"
+        "hiblaphp/dns": "dev-main"
     },
     "require-dev": {
         "pestphp/pest": "^4.0",
-        "laravel/pint": "^1.0"
+        "laravel/pint": "^1.0",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0"
     },
     "autoload": {
         "psr-4": {
@@ -41,6 +41,9 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/pest"
+        "test": "./vendor/bin/pest",
+        "format": "./vendor/bin/pint",
+        "format-test": "./vendor/bin/pint --test",
+        "analyze": "./vendor/bin/phpstan analyse"
     }
 }

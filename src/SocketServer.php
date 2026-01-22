@@ -27,7 +27,7 @@ final class SocketServer extends EventEmitter implements ServerInterface
     private readonly ServerInterface $server;
 
     /**
-     * @param string $uri 
+     * @param string $uri
      * @param array $context
      */
     public function __construct(string $uri, private readonly array $context = [])
@@ -47,14 +47,14 @@ final class SocketServer extends EventEmitter implements ServerInterface
 
         $this->server = match ($scheme) {
             'unix' => new UnixServer($uri, $context['unix']),
-            'php'  => new FdServer($uri),
-            'tcp'  => new TcpServer($uri, $context['tcp']),
-            'tls'  => $this->createSecureServer($uri, $context),
+            'php' => new FdServer($uri),
+            'tcp' => new TcpServer($uri, $context['tcp']),
+            'tls' => $this->createSecureServer($uri, $context),
             default => $this->createDefaultServer($uri, $context),
         };
 
-        $this->server->on('connection', fn(ConnectionInterface $conn) => $this->emit('connection', [$conn]));
-        $this->server->on('error', fn(Throwable $error) => $this->emit('error', [$error]));
+        $this->server->on('connection', fn (ConnectionInterface $conn) => $this->emit('connection', [$conn]));
+        $this->server->on('error', fn (Throwable $error) => $this->emit('error', [$error]));
     }
 
     /**

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Hibla\EventLoop\Loop;
 
 uses()
@@ -52,7 +54,7 @@ function create_listening_socket(string $address): mixed
 
 function get_fd_from_socket(mixed $socket): int
 {
-    if (!is_resource($socket)) {
+    if (! is_resource($socket)) {
         throw new InvalidArgumentException('Expected a valid resource');
     }
 
@@ -60,7 +62,7 @@ function get_fd_from_socket(mixed $socket): int
         test()->markTestSkipped('FD extraction not reliably supported on Windows');
     }
 
-    if (!is_dir('/dev/fd')) {
+    if (! is_dir('/dev/fd')) {
         test()->markTestSkipped('Not supported on your platform (requires /dev/fd)');
     }
 
@@ -102,18 +104,18 @@ function get_fd_from_socket(mixed $socket): int
 function generate_temp_cert(): string
 {
     $dn = [
-        "countryName" => "PH",
-        "stateOrProvinceName" => "Test",
-        "localityName" => "Test",
-        "organizationName" => "Hibla",
-        "organizationalUnitName" => "Testing",
-        "commonName" => "127.0.0.1",
-        "emailAddress" => "test@example.com"
+        'countryName' => 'PH',
+        'stateOrProvinceName' => 'Test',
+        'localityName' => 'Test',
+        'organizationName' => 'Hibla',
+        'organizationalUnitName' => 'Testing',
+        'commonName' => '127.0.0.1',
+        'emailAddress' => 'test@example.com',
     ];
 
     $privkey = openssl_pkey_new([
-        "private_key_bits" => 2048,
-        "private_key_type" => OPENSSL_KEYTYPE_RSA,
+        'private_key_bits' => 2048,
+        'private_key_type' => OPENSSL_KEYTYPE_RSA,
     ]);
 
     $csr = openssl_csr_new($dn, $privkey, ['digest_alg' => 'sha256']);
@@ -133,7 +135,6 @@ function generate_temp_cert(): string
     return $certFile;
 }
 
-
 function create_async_tls_client(int $port, array &$clients, array $sslOptions = []): void
 {
     $client = @stream_socket_client(
@@ -146,6 +147,7 @@ function create_async_tls_client(int $port, array &$clients, array $sslOptions =
 
     if ($client === false) {
         echo "TCP connect failed: $errstr\n";
+
         return;
     }
 
@@ -215,6 +217,6 @@ function run_with_timeout(float $seconds): void
     });
 
     Loop::run();
-    
+
     Loop::cancelTimer($timer);
 }

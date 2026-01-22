@@ -9,8 +9,8 @@ use Hibla\Promise\Interfaces\PromiseInterface;
 use Hibla\Promise\Promise;
 use Hibla\Socket\Exceptions\ConnectionFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
-use Hibla\Socket\Interfaces\ConnectorInterface;
 use Hibla\Socket\Interfaces\ConnectionInterface;
+use Hibla\Socket\Interfaces\ConnectorInterface;
 
 /**
  * A connector for establishing asynchronous, non-blocking TCP/IP streaming connections.
@@ -25,20 +25,20 @@ final class TcpConnector implements ConnectorInterface
 {
     public function __construct(
         private readonly array $context = []
-    ) {}
-
+    ) {
+    }
 
     /**
      * {@inheritDoc}
      */
     public function connect(string $uri): PromiseInterface
     {
-        if (!str_contains($uri, '://')) {
+        if (! str_contains($uri, '://')) {
             $uri = 'tcp://' . $uri;
         }
 
         $parts = parse_url($uri);
-        if (!$parts || !isset($parts['scheme'], $parts['host'], $parts['port']) || $parts['scheme'] !== 'tcp') {
+        if (! $parts || ! isset($parts['scheme'], $parts['host'], $parts['port']) || $parts['scheme'] !== 'tcp') {
             throw new InvalidUriException(
                 \sprintf('Invalid URI "%s" given (expected format: tcp://host:port)', $uri)
             );
@@ -62,7 +62,7 @@ final class TcpConnector implements ConnectorInterface
             $context['ssl'] = [
                 'SNI_enabled' => true,
                 'peer_name' => $args['hostname'],
-                ...($context['ssl'] ?? [])
+                ...($context['ssl'] ?? []),
             ];
         }
 
@@ -73,6 +73,7 @@ final class TcpConnector implements ConnectorInterface
         set_error_handler(static function (int $code, string $message) use (&$errno, &$errstr): bool {
             $errno = $code;
             $errstr = $message;
+
             return true;
         });
 
@@ -160,6 +161,7 @@ final class TcpConnector implements ConnectorInterface
                     $errno = (int) $m[1];
                     $errstr = $m[2];
                 }
+
                 return true;
             });
 

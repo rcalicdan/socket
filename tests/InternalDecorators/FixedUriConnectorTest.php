@@ -20,7 +20,8 @@ describe('FixedUriConnector', function () {
 
         expect($result)->toBe($connection)
             ->and($mockConnector->lastUri)->toBe($fixedUri)
-            ->and($mockConnector->connectCalled)->toBeTrue();
+            ->and($mockConnector->connectCalled)->toBeTrue()
+        ;
     });
 
     test('always uses fixed URI regardless of input', function () {
@@ -57,7 +58,8 @@ describe('FixedUriConnector', function () {
         $result = $promise->wait();
 
         expect($result)->toBe($connection)
-            ->and($result->getRemoteAddress())->toBe($fixedUri);
+            ->and($result->getRemoteAddress())->toBe($fixedUri)
+        ;
     });
 
     test('connection failure propagates', function () {
@@ -70,8 +72,9 @@ describe('FixedUriConnector', function () {
 
         $promise = $fixedUriConnector->connect('tcp://ignored.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(RuntimeException::class, 'Connection failed');
+        expect(fn () => $promise->wait())
+            ->toThrow(RuntimeException::class, 'Connection failed')
+        ;
     });
 
     test('delayed connection success', function () {
@@ -86,7 +89,8 @@ describe('FixedUriConnector', function () {
         $result = $promise->wait();
 
         expect($result)->toBe($connection)
-            ->and($mockConnector->lastUri)->toBe($fixedUri);
+            ->and($mockConnector->lastUri)->toBe($fixedUri)
+        ;
     });
 
     test('delayed connection failure', function () {
@@ -99,8 +103,9 @@ describe('FixedUriConnector', function () {
 
         $promise = $fixedUriConnector->connect('tcp://ignored.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(RuntimeException::class, 'Connection timeout');
+        expect(fn () => $promise->wait())
+            ->toThrow(RuntimeException::class, 'Connection timeout')
+        ;
     });
 
     test('promise can be cancelled', function () {
@@ -127,8 +132,10 @@ describe('FixedUriConnector', function () {
         $promise = $fixedUriConnector->connect('tcp://ignored.com:80')
             ->then(function ($conn) {
                 expect($conn)->toBeInstanceOf(MockConnection::class);
+
                 return 'chained';
-            });
+            })
+        ;
 
         $result = $promise->wait();
         expect($result)->toBe('chained');
@@ -145,8 +152,10 @@ describe('FixedUriConnector', function () {
         $promise = $fixedUriConnector->connect('tcp://ignored.com:80')
             ->catch(function ($e) {
                 expect($e)->toBeInstanceOf(RuntimeException::class);
+
                 return 'handled';
-            });
+            })
+        ;
 
         $result = $promise->wait();
         expect($result)->toBe('handled');
@@ -170,7 +179,8 @@ describe('FixedUriConnector', function () {
 
         expect($result1)->toBe($connection1)
             ->and($result2)->toBe($connection2)
-            ->and($mockConnector->lastUri)->toBe($fixedUri);
+            ->and($mockConnector->lastUri)->toBe($fixedUri)
+        ;
     });
 
     test('connection state remains valid after successful connection', function () {
@@ -187,7 +197,8 @@ describe('FixedUriConnector', function () {
 
         expect($result->isReadable())->toBeTrue()
             ->and($result->isWritable())->toBeTrue()
-            ->and($result->isClosed())->toBeFalse();
+            ->and($result->isClosed())->toBeFalse()
+        ;
     });
 
     test('connection can be written to after successful connection', function () {
@@ -204,7 +215,8 @@ describe('FixedUriConnector', function () {
         $writeSuccess = $result->write('test data');
 
         expect($writeSuccess)->toBeTrue()
-            ->and($result->isWritable())->toBeTrue();
+            ->and($result->isWritable())->toBeTrue()
+        ;
     });
 
     test('connection can be closed after successful connection', function () {
@@ -223,7 +235,8 @@ describe('FixedUriConnector', function () {
 
         expect($result->isClosed())->toBeTrue()
             ->and($result->isReadable())->toBeFalse()
-            ->and($result->isWritable())->toBeFalse();
+            ->and($result->isWritable())->toBeFalse()
+        ;
     });
 
     test('finally handler executes on success', function () {
@@ -238,7 +251,8 @@ describe('FixedUriConnector', function () {
         $promise = $fixedUriConnector->connect('tcp://ignored.com:80')
             ->finally(function () use (&$finallyCalled) {
                 $finallyCalled = true;
-            });
+            })
+        ;
 
         $promise->wait();
 
@@ -257,7 +271,8 @@ describe('FixedUriConnector', function () {
         $promise = $fixedUriConnector->connect('tcp://ignored.com:80')
             ->finally(function () use (&$finallyCalled) {
                 $finallyCalled = true;
-            });
+            })
+        ;
 
         try {
             $promise->wait();
@@ -281,7 +296,8 @@ describe('FixedUriConnector', function () {
         $result = $promise->wait();
 
         expect($result->getRemoteAddress())->toBe($fixedUri)
-            ->and($result->getLocalAddress())->toBe($localAddr);
+            ->and($result->getLocalAddress())->toBe($localAddr)
+        ;
     });
 
     test('empty string as target URI still uses fixed URI', function () {
@@ -296,16 +312,17 @@ describe('FixedUriConnector', function () {
         $result = $promise->wait();
 
         expect($mockConnector->lastUri)->toBe($fixedUri)
-            ->and($result)->toBe($connection);
+            ->and($result)->toBe($connection)
+        ;
     });
 
     test('wrapping multiple connectors', function () {
         $fixedUri1 = 'tcp://first.example.com:443';
         $fixedUri2 = 'tcp://second.example.com:443';
-        
+
         $mockConnector1 = new MockConnector();
         $mockConnector2 = new MockConnector();
-        
+
         $fixedConnector1 = new FixedUriConnector($fixedUri1, $mockConnector1);
         $fixedConnector2 = new FixedUriConnector($fixedUri2, $mockConnector2);
 

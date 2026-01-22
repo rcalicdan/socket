@@ -12,7 +12,7 @@ use Hibla\Socket\Exceptions\EncryptionFailedException;
 
 /**
  * @internal
- * 
+ *
  * Handles the asynchronous TLS/SSL handshake process.
  */
 final class StreamEncryption
@@ -74,7 +74,7 @@ final class StreamEncryption
             });
 
             $result = stream_socket_enable_crypto($socket, $enable, $method);
-            
+
             restore_error_handler();
 
             if ($result === true) {
@@ -83,20 +83,20 @@ final class StreamEncryption
                     Loop::removeReadWatcher($watcherId);
                     $watcherId = null;
                 }
-                
+
                 $connection->encryptionEnabled = $enable;
                 $connection->resume();
                 $promise->resolve($connection);
-                
+
             } elseif ($result === false) {
                 // Failure: Handshake failed permanently
                 if ($watcherId !== null) {
                     Loop::removeReadWatcher($watcherId);
                     $watcherId = null;
                 }
-                
+
                 $connection->resume();
-                
+
                 if (feof($socket) || $error === null) {
                     // EOF or failed without error => connection closed during handshake
                     $promise->reject(new EncryptionFailedException(
@@ -120,7 +120,7 @@ final class StreamEncryption
         );
 
         // If we are the client, start the handshake immediately
-        if (!$this->isServer) {
+        if (! $this->isServer) {
             $toggleCrypto();
         }
 

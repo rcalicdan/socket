@@ -16,7 +16,7 @@ describe('Connector', function () {
             $connector = new Connector(['dns' => false]);
 
             $promise = $connector->connect('tcp://127.0.0.1:8080');
-            
+
             expect($promise)->toBeInstanceOf(PromiseInterface::class);
         });
 
@@ -24,7 +24,7 @@ describe('Connector', function () {
             $connector = new Connector(['dns' => false]);
 
             $promise = $connector->connect('127.0.0.1:8080');
-            
+
             expect($promise)->toBeInstanceOf(PromiseInterface::class);
         });
 
@@ -33,8 +33,9 @@ describe('Connector', function () {
 
             $promise = $connector->connect('http://example.com:80');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(InvalidUriException::class, 'No connector available for URI scheme "http"');
+            expect(fn () => $promise->wait())
+                ->toThrow(InvalidUriException::class, 'No connector available for URI scheme "http"')
+            ;
         });
 
         test('throws InvalidUriException for ftp scheme', function () {
@@ -42,8 +43,9 @@ describe('Connector', function () {
 
             $promise = $connector->connect('ftp://example.com:21');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(InvalidUriException::class, 'No connector available for URI scheme "ftp"');
+            expect(fn () => $promise->wait())
+                ->toThrow(InvalidUriException::class, 'No connector available for URI scheme "ftp"')
+            ;
         });
     });
 
@@ -52,7 +54,7 @@ describe('Connector', function () {
             $connector = new Connector(['dns' => false]);
 
             $promise = $connector->connect('tls://127.0.0.1:443');
-            
+
             expect($promise)->toBeInstanceOf(PromiseInterface::class);
         });
 
@@ -61,8 +63,9 @@ describe('Connector', function () {
 
             $promise = $connector->connect('tls://example.com:443');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(InvalidUriException::class, 'No connector available for URI scheme "tls"');
+            expect(fn () => $promise->wait())
+                ->toThrow(InvalidUriException::class, 'No connector available for URI scheme "tls"')
+            ;
         });
     });
 
@@ -72,11 +75,11 @@ describe('Connector', function () {
             $connector = new Connector();
 
             $promise = $connector->connect('unix://' . $socketPath);
-            
+
             expect($promise)->toBeInstanceOf(PromiseInterface::class);
-            
+
             $promise->catch(function ($e) {
-                expect($e)->toBeInstanceOf(\Throwable::class);
+                expect($e)->toBeInstanceOf(Throwable::class);
             });
         });
 
@@ -85,8 +88,9 @@ describe('Connector', function () {
 
             $promise = $connector->connect('unix:///tmp/test.sock');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(InvalidUriException::class, 'No connector available for URI scheme "unix"');
+            expect(fn () => $promise->wait())
+                ->toThrow(InvalidUriException::class, 'No connector available for URI scheme "unix"')
+            ;
         });
     })->skipOnWindows();
 
@@ -104,7 +108,8 @@ describe('Connector', function () {
             $result = $promise->wait();
 
             expect($mockConnector->connectCalled)->toBeTrue()
-                ->and($result)->toBeInstanceOf(ConnectionInterface::class);
+                ->and($result)->toBeInstanceOf(ConnectionInterface::class)
+            ;
         });
 
         test('accepts custom TLS connector', function () {
@@ -122,7 +127,8 @@ describe('Connector', function () {
             $result = $promise->wait();
 
             expect($mockTlsConnector->connectCalled)->toBeTrue()
-                ->and($result)->toBeInstanceOf(ConnectionInterface::class);
+                ->and($result)->toBeInstanceOf(ConnectionInterface::class)
+            ;
         });
 
         test('accepts custom Unix connector', function () {
@@ -137,7 +143,8 @@ describe('Connector', function () {
             $result = $promise->wait();
 
             expect($mockConnector->connectCalled)->toBeTrue()
-                ->and($result)->toBeInstanceOf(ConnectionInterface::class);
+                ->and($result)->toBeInstanceOf(ConnectionInterface::class)
+            ;
         });
 
         test('accepts custom DNS resolver', function () {
@@ -273,11 +280,11 @@ describe('Connector', function () {
             $promise = $connector->connect('unix:///tmp/test.sock');
 
             expect($promise)->toBeInstanceOf(PromiseInterface::class);
-            
+
             // Handle the rejection to avoid unhandled promise warnings
             $promise->catch(function ($e) {
                 // Expected - socket doesn't exist
-                expect($e)->toBeInstanceOf(\Throwable::class);
+                expect($e)->toBeInstanceOf(Throwable::class);
             });
         });
 
@@ -333,15 +340,16 @@ describe('Connector', function () {
 
             $promise = $connector->connect('tcp://127.0.0.1:8080');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(InvalidUriException::class);
+            expect(fn () => $promise->wait())
+                ->toThrow(InvalidUriException::class)
+            ;
         });
     });
 
     describe('Error handling', function () {
         test('connection failure propagates', function () {
             $mockConnector = new MockConnector();
-            $error = new \RuntimeException('Connection failed');
+            $error = new RuntimeException('Connection failed');
             $mockConnector->setImmediateFailure($error);
 
             $connector = new Connector([
@@ -351,8 +359,9 @@ describe('Connector', function () {
 
             $promise = $connector->connect('tcp://127.0.0.1:8080');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(\RuntimeException::class, 'Connection failed');
+            expect(fn () => $promise->wait())
+                ->toThrow(RuntimeException::class, 'Connection failed')
+            ;
         });
 
         test('invalid URI handled gracefully', function () {
@@ -405,7 +414,8 @@ describe('Connector - Real Network Integration', function () {
             expect($connection)
                 ->toBeInstanceOf(ConnectionInterface::class)
                 ->and($connection->isReadable())->toBeTrue()
-                ->and($connection->isWritable())->toBeTrue();
+                ->and($connection->isWritable())->toBeTrue()
+            ;
 
             $connection->close();
         });
@@ -421,7 +431,8 @@ describe('Connector - Real Network Integration', function () {
             expect($connection)
                 ->toBeInstanceOf(ConnectionInterface::class)
                 ->and($connection->isReadable())->toBeTrue()
-                ->and($connection->isWritable())->toBeTrue();
+                ->and($connection->isWritable())->toBeTrue()
+            ;
 
             $connection->close();
         });
@@ -437,7 +448,8 @@ describe('Connector - Real Network Integration', function () {
             $connection = $promise->wait();
 
             expect($connection)
-                ->toBeInstanceOf(ConnectionInterface::class);
+                ->toBeInstanceOf(ConnectionInterface::class)
+            ;
 
             $connection->close();
         });
@@ -460,7 +472,8 @@ describe('Connector - Real Network Integration', function () {
                 ->toBeInstanceOf(ConnectionInterface::class)
                 ->and($connection->isReadable())->toBeTrue()
                 ->and($connection->isWritable())->toBeTrue()
-                ->and($connection->getRemoteAddress())->toContain('tls://');
+                ->and($connection->getRemoteAddress())->toContain('tls://')
+            ;
 
             $connection->close();
         });
@@ -476,7 +489,8 @@ describe('Connector - Real Network Integration', function () {
             expect($connection)
                 ->toBeInstanceOf(ConnectionInterface::class)
                 ->and($connection->isReadable())->toBeTrue()
-                ->and($connection->isWritable())->toBeTrue();
+                ->and($connection->isWritable())->toBeTrue()
+            ;
 
             $connection->close();
         });
@@ -494,7 +508,8 @@ describe('Connector - Real Network Integration', function () {
             $connection = $promise->wait();
 
             expect($connection)
-                ->toBeInstanceOf(ConnectionInterface::class);
+                ->toBeInstanceOf(ConnectionInterface::class)
+            ;
 
             $connection->close();
         });
@@ -513,7 +528,8 @@ describe('Connector - Real Network Integration', function () {
             expect($connection)
                 ->toBeInstanceOf(ConnectionInterface::class)
                 ->and($connection->isReadable())->toBeTrue()
-                ->and($connection->isWritable())->toBeTrue();
+                ->and($connection->isWritable())->toBeTrue()
+            ;
 
             $connection->close();
         });
@@ -528,7 +544,8 @@ describe('Connector - Real Network Integration', function () {
             $connection = $promise->wait();
 
             expect($connection)
-                ->toBeInstanceOf(ConnectionInterface::class);
+                ->toBeInstanceOf(ConnectionInterface::class)
+            ;
 
             $connection->close();
         });
@@ -545,13 +562,14 @@ describe('Connector - Real Network Integration', function () {
                 $connection = $promise->wait();
 
                 expect($connection)
-                    ->toBeInstanceOf(ConnectionInterface::class);
+                    ->toBeInstanceOf(ConnectionInterface::class)
+                ;
 
                 $remoteAddr = $connection->getRemoteAddress();
                 expect($remoteAddr)->toContain('[');
 
                 $connection->close();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->markTestSkipped('IPv6 not available in this environment');
             }
         });
@@ -567,7 +585,8 @@ describe('Connector - Real Network Integration', function () {
             $connection = $promise->wait();
 
             expect($connection)
-                ->toBeInstanceOf(ConnectionInterface::class);
+                ->toBeInstanceOf(ConnectionInterface::class)
+            ;
 
             $connection->close();
         });
@@ -583,7 +602,8 @@ describe('Connector - Real Network Integration', function () {
             $connection = $promise->wait();
 
             expect($connection)
-                ->toBeInstanceOf(ConnectionInterface::class);
+                ->toBeInstanceOf(ConnectionInterface::class)
+            ;
 
             $connection->close();
         });
@@ -592,9 +612,9 @@ describe('Connector - Real Network Integration', function () {
     describe('Unix domain sockets', function () {
         test('connects to Unix socket', function () {
             $socketPath = sys_get_temp_dir() . '/hibla-connector-test-' . uniqid() . '.sock';
-            
+
             $server = @stream_socket_server('unix://' . $socketPath);
-            
+
             if ($server === false) {
                 $this->markTestSkipped('Cannot create Unix socket server');
             }
@@ -609,7 +629,8 @@ describe('Connector - Real Network Integration', function () {
             expect($connection)
                 ->toBeInstanceOf(ConnectionInterface::class)
                 ->and($connection->isReadable())->toBeTrue()
-                ->and($connection->isWritable())->toBeTrue();
+                ->and($connection->isWritable())->toBeTrue()
+            ;
 
             $connection->close();
             fclose($server);
@@ -630,12 +651,14 @@ describe('Connector - Real Network Integration', function () {
 
             try {
                 $promise->wait();
-                throw new \Exception('Expected timeout exception');
-            } catch (\Exception $e) {
+
+                throw new Exception('Expected timeout exception');
+            } catch (Exception $e) {
                 $elapsed = microtime(true) - $startTime;
-                
+
                 expect($elapsed)->toBeGreaterThanOrEqual(0.9)
-                    ->and($elapsed)->toBeLessThan(2.0);
+                    ->and($elapsed)->toBeLessThan(2.0)
+                ;
             }
         });
 
@@ -658,8 +681,9 @@ describe('Connector - Real Network Integration', function () {
 
             $promise = $connector->connect('tcp://this-domain-definitely-does-not-exist-12345.com:80');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(\Exception::class);
+            expect(fn () => $promise->wait())
+                ->toThrow(Exception::class)
+            ;
         });
 
         test('handles connection refused', function () {
@@ -670,8 +694,9 @@ describe('Connector - Real Network Integration', function () {
 
             $promise = $connector->connect('tcp://127.0.0.1:54321');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(\Exception::class);
+            expect(fn () => $promise->wait())
+                ->toThrow(Exception::class)
+            ;
         });
 
         test('handles TLS handshake failure', function () {
@@ -686,8 +711,9 @@ describe('Connector - Real Network Integration', function () {
 
             $promise = $connector->connect('tls://1.1.1.1:80');
 
-            expect(fn() => $promise->wait())
-                ->toThrow(\Exception::class);
+            expect(fn () => $promise->wait())
+                ->toThrow(Exception::class)
+            ;
         });
     });
 
@@ -702,8 +728,10 @@ describe('Connector - Real Network Integration', function () {
                 ->then(function ($conn) {
                     expect($conn)->toBeInstanceOf(ConnectionInterface::class);
                     $conn->close();
+
                     return 'success';
-                });
+                })
+            ;
 
             $result = $promise->wait();
             expect($result)->toBe('success');
@@ -717,9 +745,11 @@ describe('Connector - Real Network Integration', function () {
 
             $promise = $connector->connect('tcp://192.0.2.1:80')
                 ->catch(function ($e) {
-                    expect($e)->toBeInstanceOf(\Throwable::class);
+                    expect($e)->toBeInstanceOf(Throwable::class);
+
                     return 'handled';
-                });
+                })
+            ;
 
             $result = $promise->wait();
             expect($result)->toBe('handled');
@@ -739,7 +769,8 @@ describe('Connector - Real Network Integration', function () {
                 })
                 ->then(function ($conn) {
                     $conn->close();
-                });
+                })
+            ;
 
             $promise->wait();
 
@@ -757,11 +788,12 @@ describe('Connector - Real Network Integration', function () {
             $promise = $connector->connect('tcp://192.0.2.1:80')
                 ->finally(function () use (&$finallyCalled) {
                     $finallyCalled = true;
-                });
+                })
+            ;
 
             try {
                 $promise->wait();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Expected
             }
 
@@ -800,7 +832,8 @@ describe('Connector - Real Network Integration', function () {
             $connection2 = $promise2->wait();
 
             expect($connection1->isReadable())->toBeTrue()
-                ->and($connection2->isReadable())->toBeTrue();
+                ->and($connection2->isReadable())->toBeTrue()
+            ;
 
             $connection1->close();
 

@@ -31,7 +31,7 @@ final class FdServer extends EventEmitter implements ServerInterface
             $fd = (int) $matches[1];
         }
 
-        if (!\is_int($fd) || $fd < 0) {
+        if (! \is_int($fd) || $fd < 0) {
             throw new InvalidUriException(
                 'Invalid file descriptor (FD) number given (EINVAL)'
             );
@@ -58,7 +58,7 @@ final class FdServer extends EventEmitter implements ServerInterface
         $this->validateSocketResource($fd);
 
         $address = stream_socket_get_name($this->master, false);
-        $this->isUnix = ($address !== false && !str_contains($address, ':'));
+        $this->isUnix = ($address !== false && ! str_contains($address, ':'));
 
         stream_set_blocking($this->master, false);
         $this->resume();
@@ -69,19 +69,21 @@ final class FdServer extends EventEmitter implements ServerInterface
      */
     public function getAddress(): ?string
     {
-        if (!\is_resource($this->master)) {
+        if (! \is_resource($this->master)) {
             return null;
         }
 
         $address = stream_socket_get_name($this->master, false);
-        if ($address === false) return null;
+        if ($address === false) {
+            return null;
+        }
 
         if ($this->isUnix) {
             return 'unix://' . $address;
         }
 
         $pos = strrpos($address, ':');
-        if ($pos !== false && strpos($address, ':') < $pos && !str_starts_with($address, '[')) {
+        if ($pos !== false && strpos($address, ':') < $pos && ! str_starts_with($address, '[')) {
             $address = '[' . substr($address, 0, $pos) . ']:' . substr($address, $pos + 1);
         }
 
@@ -93,7 +95,7 @@ final class FdServer extends EventEmitter implements ServerInterface
      */
     public function pause(): void
     {
-        if (!$this->listening || $this->watcherId === null) {
+        if (! $this->listening || $this->watcherId === null) {
             return;
         }
 
@@ -107,7 +109,7 @@ final class FdServer extends EventEmitter implements ServerInterface
      */
     public function resume(): void
     {
-        if ($this->listening || !\is_resource($this->master)) {
+        if ($this->listening || ! \is_resource($this->master)) {
             return;
         }
 
@@ -123,7 +125,7 @@ final class FdServer extends EventEmitter implements ServerInterface
      */
     public function close(): void
     {
-        if (!\is_resource($this->master)) {
+        if (! \is_resource($this->master)) {
             return;
         }
         $this->pause();
@@ -134,8 +136,9 @@ final class FdServer extends EventEmitter implements ServerInterface
     private function validateSocketResource(int $fd): void
     {
         $meta = stream_get_meta_data($this->master);
-        if (!isset($meta['stream_type']) || !\in_array($meta['stream_type'], ['tcp_socket', 'unix_socket'], true)) {
+        if (! isset($meta['stream_type']) || ! \in_array($meta['stream_type'], ['tcp_socket', 'unix_socket'], true)) {
             $this->close();
+
             throw new BindFailedException(
                 \sprintf('File descriptor %d is not a valid TCP or Unix socket (ENOTSOCK)', $fd),
                 \defined('SOCKET_ENOTSOCK') ? SOCKET_ENOTSOCK : 88
@@ -144,6 +147,7 @@ final class FdServer extends EventEmitter implements ServerInterface
 
         if (stream_socket_get_name($this->master, remote: true) !== false) {
             $this->close();
+
             throw new BindFailedException(
                 \sprintf('File descriptor %d is already connected and not a listening socket (EISCONN)', $fd),
                 \defined('SOCKET_EISCONN') ? SOCKET_EISCONN : 106
@@ -160,7 +164,6 @@ final class FdServer extends EventEmitter implements ServerInterface
             $this->emit('error', [$e]);
         }
     }
-
 
     private function handleConnection(mixed $socket): void
     {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Hibla\EventLoop\Loop;
 use Hibla\Promise\Exceptions\PromiseCancelledException;
 use Hibla\Socket\Connection;
@@ -11,7 +13,7 @@ describe('Stream Encryption', function () {
     $client = null;
     $connection = null;
 
-   beforeEach(function () use (&$certFile) {
+    beforeEach(function () use (&$certFile) {
         if (DIRECTORY_SEPARATOR === '\\') {
             test()->markTestSkipped('Skipped on Windows');
         }
@@ -48,8 +50,8 @@ describe('Stream Encryption', function () {
                 'local_cert' => $certFile,
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
+                'allow_self_signed' => true,
+            ],
         ]);
 
         $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN, $context);
@@ -76,10 +78,10 @@ describe('Stream Encryption', function () {
 
         $clientHandshakeTimer = null;
         $clientHandshake = function () use ($client, &$clientHandshake, &$clientHandshakeTimer) {
-            if (!is_resource($client)) {
+            if (! is_resource($client)) {
                 return;
             }
-            
+
             $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
 
             if ($result === 0) {
@@ -98,26 +100,27 @@ describe('Stream Encryption', function () {
                 expect($connection->encryptionEnabled)->toBeTrue();
 
                 if (is_resource($client)) {
-                    fwrite($client, "Hello Secure World");
+                    fwrite($client, 'Hello Secure World');
                 }
 
                 $connection->on('data', function ($data) use (&$received, &$completed) {
                     $received .= $data;
-                    if ($received === "Hello Secure World") {
+                    if ($received === 'Hello Secure World') {
                         $completed = true;
                     }
                 });
             })
             ->catch(function ($e) {
                 test()->fail('Encryption should have succeeded: ' . $e->getMessage());
-            });
+            })
+        ;
 
         $timeout = microtime(true) + 2;
-        while (!$completed && microtime(true) < $timeout) {
+        while (! $completed && microtime(true) < $timeout) {
             Loop::runOnce();
         }
 
-        expect($received)->toBe("Hello Secure World");
+        expect($received)->toBe('Hello Secure World');
     });
 
     it('successfully enables encryption (Client Mode)', function () use (&$certFile, &$server, &$client, &$connection) {
@@ -126,16 +129,16 @@ describe('Stream Encryption', function () {
                 'local_cert' => $certFile,
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
+                'allow_self_signed' => true,
+            ],
         ]);
 
         $clientContext = stream_context_create([
             'ssl' => [
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
+                'allow_self_signed' => true,
+            ],
         ]);
 
         $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN, $serverContext);
@@ -158,12 +161,12 @@ describe('Stream Encryption', function () {
 
         $serverHandshakeTimer = null;
         $serverHandshake = function () use ($serverSocket, &$serverHandshake, &$serverHandshakeTimer, &$completed, &$received) {
-            if (!is_resource($serverSocket)) {
+            if (! is_resource($serverSocket)) {
                 return;
             }
-            
+
             $result = @stream_socket_enable_crypto($serverSocket, true, STREAM_CRYPTO_METHOD_TLS_SERVER);
-            
+
             if ($result === 0) {
                 $serverHandshakeTimer = Loop::addTimer(0.01, $serverHandshake);
             } elseif ($result === true) {
@@ -171,9 +174,9 @@ describe('Stream Encryption', function () {
                     Loop::cancelTimer($serverHandshakeTimer);
                     $serverHandshakeTimer = null;
                 }
-                
+
                 if (is_resource($serverSocket)) {
-                    fwrite($serverSocket, "Server Message");
+                    fwrite($serverSocket, 'Server Message');
                 }
             }
         };
@@ -190,21 +193,22 @@ describe('Stream Encryption', function () {
 
                 $connection->on('data', function ($data) use (&$received, &$completed) {
                     $received .= $data;
-                    if ($received === "Server Message") {
+                    if ($received === 'Server Message') {
                         $completed = true;
                     }
                 });
             })
             ->catch(function ($e) {
                 test()->fail('Client-side encryption should have succeeded: ' . $e->getMessage());
-            });
+            })
+        ;
 
         $timeout = microtime(true) + 2;
-        while (!$completed && microtime(true) < $timeout) {
+        while (! $completed && microtime(true) < $timeout) {
             Loop::runOnce();
         }
 
-        expect($received)->toBe("Server Message");
+        expect($received)->toBe('Server Message');
     });
 
     it('ensures stream is non-blocking after encryption', function () use (&$certFile, &$server, &$client, &$connection) {
@@ -213,8 +217,8 @@ describe('Stream Encryption', function () {
                 'local_cert' => $certFile,
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
+                'allow_self_signed' => true,
+            ],
         ]);
 
         $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN, $context);
@@ -240,10 +244,10 @@ describe('Stream Encryption', function () {
 
         $clientHandshakeTimer = null;
         $clientHandshake = function () use ($client, &$clientHandshake, &$clientHandshakeTimer) {
-            if (!is_resource($client)) {
+            if (! is_resource($client)) {
                 return;
             }
-            
+
             $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
             if ($result === 0) {
                 $clientHandshakeTimer = Loop::addTimer(0.01, $clientHandshake);
@@ -262,10 +266,11 @@ describe('Stream Encryption', function () {
             })
             ->catch(function ($e) {
                 test()->fail('Encryption should have succeeded: ' . $e->getMessage());
-            });
+            })
+        ;
 
         $timeout = microtime(true) + 2;
-        while (!$completed && microtime(true) < $timeout) {
+        while (! $completed && microtime(true) < $timeout) {
             Loop::runOnce();
         }
 
@@ -307,10 +312,11 @@ describe('Stream Encryption', function () {
             ->catch(function ($e) use (&$failed, &$errorMessage) {
                 $failed = true;
                 $errorMessage = $e->getMessage();
-            });
+            })
+        ;
 
         $timeout = microtime(true) + 2;
-        while (!$failed && microtime(true) < $timeout) {
+        while (! $failed && microtime(true) < $timeout) {
             Loop::runOnce();
         }
 
@@ -356,10 +362,11 @@ describe('Stream Encryption', function () {
             ->catch(function ($e) use (&$failed, &$errorMessage) {
                 $failed = true;
                 $errorMessage = $e->getMessage();
-            });
+            })
+        ;
 
         $timeout = microtime(true) + 2;
-        while (!$failed && microtime(true) < $timeout) {
+        while (! $failed && microtime(true) < $timeout) {
             Loop::runOnce();
         }
 
@@ -390,7 +397,7 @@ describe('Stream Encryption', function () {
 
         $promise->cancel();
 
-        expect(fn() => $promise->wait())->toThrow(PromiseCancelledException::class);
+        expect(fn () => $promise->wait())->toThrow(PromiseCancelledException::class);
     });
 
     it('handles multiple sequential handshake attempts', function () use (&$certFile, &$server, &$client, &$connection) {
@@ -399,8 +406,8 @@ describe('Stream Encryption', function () {
                 'local_cert' => $certFile,
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
+                'allow_self_signed' => true,
+            ],
         ]);
 
         $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN, $context);
@@ -427,10 +434,10 @@ describe('Stream Encryption', function () {
 
         $clientHandshakeTimer = null;
         $clientHandshake = function () use ($client, &$clientHandshake, &$clientHandshakeTimer) {
-            if (!is_resource($client)) {
+            if (! is_resource($client)) {
                 return;
             }
-            
+
             $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
             if ($result === 0) {
                 $clientHandshakeTimer = Loop::addTimer(0.01, $clientHandshake);
@@ -444,26 +451,27 @@ describe('Stream Encryption', function () {
         $promise
             ->then(function () use ($connection, $client, &$received, &$completed) {
                 if (is_resource($client)) {
-                    fwrite($client, "Test");
+                    fwrite($client, 'Test');
                 }
 
                 $connection->on('data', function ($data) use (&$received, &$completed) {
                     $received .= $data;
-                    if ($received === "Test") {
+                    if ($received === 'Test') {
                         $completed = true;
                     }
                 });
             })
             ->catch(function ($e) {
                 test()->fail('Encryption should have succeeded: ' . $e->getMessage());
-            });
+            })
+        ;
 
         $timeout = microtime(true) + 2;
-        while (!$completed && microtime(true) < $timeout) {
+        while (! $completed && microtime(true) < $timeout) {
             Loop::runOnce();
         }
 
-        expect($received)->toBe("Test");
+        expect($received)->toBe('Test');
     });
 
     it('cleans up watchers on cancellation', function () use (&$certFile, &$server, &$client, &$connection) {
@@ -488,7 +496,7 @@ describe('Stream Encryption', function () {
         $promise = $encryption->enable($connection);
 
         $promise->cancel();
-        expect(fn() => $promise->wait())->toThrow(PromiseCancelledException::class);
+        expect(fn () => $promise->wait())->toThrow(PromiseCancelledException::class);
         expect(is_resource($connection->getResource()))->toBeTrue();
     });
 
@@ -498,8 +506,8 @@ describe('Stream Encryption', function () {
                 'local_cert' => $certFile,
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
+                'allow_self_signed' => true,
+            ],
         ]);
 
         $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN, $context);
@@ -531,10 +539,10 @@ describe('Stream Encryption', function () {
 
         $clientHandshakeTimer = null;
         $clientHandshake = function () use ($client, &$clientHandshake, &$clientHandshakeTimer) {
-            if (!is_resource($client)) {
+            if (! is_resource($client)) {
                 return;
             }
-            
+
             $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
             if ($result === 0) {
                 $clientHandshakeTimer = Loop::addTimer(0.01, $clientHandshake);
@@ -550,26 +558,27 @@ describe('Stream Encryption', function () {
                 expect($dataReceivedDuringHandshake)->toBeFalse();
 
                 if (is_resource($client)) {
-                    fwrite($client, "Post-handshake data");
+                    fwrite($client, 'Post-handshake data');
                 }
 
                 $connection->on('data', function ($data) use (&$received, &$completed) {
                     $received .= $data;
-                    if ($received === "Post-handshake data") {
+                    if ($received === 'Post-handshake data') {
                         $completed = true;
                     }
                 });
             })
             ->catch(function ($e) {
                 test()->fail('Encryption should have succeeded: ' . $e->getMessage());
-            });
+            })
+        ;
 
         $timeout = microtime(true) + 2;
-        while (!$completed && microtime(true) < $timeout) {
+        while (! $completed && microtime(true) < $timeout) {
             Loop::runOnce();
         }
 
-        expect($received)->toBe("Post-handshake data");
+        expect($received)->toBe('Post-handshake data');
     });
 
     it('handles custom crypto method from context', function () use (&$certFile, &$server, &$client, &$connection) {
@@ -579,8 +588,8 @@ describe('Stream Encryption', function () {
                 'verify_peer' => false,
                 'verify_peer_name' => false,
                 'allow_self_signed' => true,
-                'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_SERVER
-            ]
+                'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_SERVER,
+            ],
         ]);
 
         $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr, STREAM_SERVER_BIND | STREAM_SERVER_LISTEN, $context);
@@ -591,8 +600,8 @@ describe('Stream Encryption', function () {
             'ssl' => [
                 'verify_peer' => false,
                 'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
+                'allow_self_signed' => true,
+            ],
         ]);
 
         $client = stream_socket_client('tcp://' . $address, $errno, $errstr, 1, STREAM_CLIENT_CONNECT, $clientContext);
@@ -605,10 +614,10 @@ describe('Stream Encryption', function () {
 
         $serverSocket = stream_socket_accept($server);
         stream_set_blocking($serverSocket, false);
-        
+
         stream_context_set_option($serverSocket, 'ssl', 'local_cert', $certFile);
         stream_context_set_option($serverSocket, 'ssl', 'crypto_method', STREAM_CRYPTO_METHOD_TLSv1_2_SERVER);
-        
+
         $connection = new Connection($serverSocket);
 
         $encryption = new StreamEncryption(isServer: true);
@@ -618,10 +627,10 @@ describe('Stream Encryption', function () {
 
         $clientHandshakeTimer = null;
         $clientHandshake = function () use ($client, &$clientHandshake, &$clientHandshakeTimer) {
-            if (!is_resource($client)) {
+            if (! is_resource($client)) {
                 return;
             }
-            
+
             $result = @stream_socket_enable_crypto($client, true, STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT);
             if ($result === 0) {
                 $clientHandshakeTimer = Loop::addTimer(0.01, $clientHandshake);
@@ -640,10 +649,11 @@ describe('Stream Encryption', function () {
             })
             ->catch(function ($e) {
                 test()->fail('Encryption should have succeeded: ' . $e->getMessage());
-            });
+            })
+        ;
 
         $timeout = microtime(true) + 2;
-        while (!$completed && microtime(true) < $timeout) {
+        while (! $completed && microtime(true) < $timeout) {
             Loop::runOnce();
         }
 

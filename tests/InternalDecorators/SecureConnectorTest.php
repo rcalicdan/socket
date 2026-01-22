@@ -3,25 +3,26 @@
 declare(strict_types=1);
 
 use Hibla\EventLoop\Loop;
+use Hibla\Promise\Exceptions\PromiseCancelledException;
 use Hibla\Socket\Connection;
 use Hibla\Socket\Exceptions\ConnectionFailedException;
 use Hibla\Socket\Exceptions\EncryptionFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
 use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Socket\SecureConnector;
-use Hibla\Socket\TcpConnector;
-use Hibla\Promise\Exceptions\PromiseCancelledException;
 use Hibla\Socket\SecureServer;
+use Hibla\Socket\TcpConnector;
 use Hibla\Socket\TcpServer;
 
-describe("Secure Connector", function () {
+describe('Secure Connector', function () {
     describe('URI validation', function () {
         it('accepts tls:// scheme', function () {
             $connector = new SecureConnector(new TcpConnector());
 
             expect(function () use ($connector) {
                 $promise = $connector->connect('tls://127.0.0.1:443');
-                $promise->catch(fn() => null);
+                $promise->catch(fn () => null);
+
                 return null;
             })->not->toThrow(InvalidUriException::class);
         });
@@ -31,7 +32,8 @@ describe("Secure Connector", function () {
 
             expect(function () use ($connector) {
                 $promise = $connector->connect('127.0.0.1:443');
-                $promise->catch(fn() => null);
+                $promise->catch(fn () => null);
+
                 return null;
             })->not->toThrow(InvalidUriException::class);
         });
@@ -39,15 +41,17 @@ describe("Secure Connector", function () {
         it('rejects invalid scheme', function () {
             $connector = new SecureConnector(new TcpConnector());
 
-            expect(fn() => $connector->connect('http://127.0.0.1:443'))
-                ->toThrow(InvalidUriException::class, 'is invalid');
+            expect(fn () => $connector->connect('http://127.0.0.1:443'))
+                ->toThrow(InvalidUriException::class, 'is invalid')
+            ;
         });
 
         it('rejects tcp:// scheme', function () {
             $connector = new SecureConnector(new TcpConnector());
 
-            expect(fn() => $connector->connect('tcp://127.0.0.1:443'))
-                ->toThrow(InvalidUriException::class);
+            expect(fn () => $connector->connect('tcp://127.0.0.1:443'))
+                ->toThrow(InvalidUriException::class)
+            ;
         });
     });
 
@@ -146,7 +150,8 @@ describe("Secure Connector", function () {
                         $resolved = true;
                         $connection = $conn;
                         Loop::stop();
-                    });
+                    })
+                ;
 
                 Loop::addTimer(2.0, function () {
                     Loop::stop();
@@ -224,6 +229,7 @@ describe("Secure Connector", function () {
 
             try {
                 $promise->wait();
+
                 throw new Exception('Should have thrown');
             } catch (ConnectionFailedException $e) {
                 expect($e->getMessage())->toContain('failed');
@@ -242,6 +248,7 @@ describe("Secure Connector", function () {
 
             try {
                 $promise->wait();
+
                 throw new Exception('Should have thrown');
             } catch (ConnectionFailedException $e) {
                 expect($e)->toBeInstanceOf(ConnectionFailedException::class);
@@ -376,8 +383,9 @@ describe("Secure Connector", function () {
 
             Loop::run();
 
-            expect(fn() => $promise->wait())
-                ->toThrow(PromiseCancelledException::class, 'Cannot wait on a cancelled promise');
+            expect(fn () => $promise->wait())
+                ->toThrow(PromiseCancelledException::class, 'Cannot wait on a cancelled promise')
+            ;
         });
     });
 

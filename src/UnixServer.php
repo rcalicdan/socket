@@ -51,6 +51,7 @@ final class UnixServer extends EventEmitter implements ServerInterface
             $testSocket = @stream_socket_client('unix://' . $this->socketPath, $errno, $errstr, 0.1);
             if ($testSocket !== false) {
                 fclose($testSocket);
+
                 throw new AddressInUseException(
                     \sprintf('Unix domain socket "%s" is already in use', $path)
                 );
@@ -93,7 +94,7 @@ final class UnixServer extends EventEmitter implements ServerInterface
      */
     public function getAddress(): ?string
     {
-        if (!\is_resource($this->master)) {
+        if (! \is_resource($this->master)) {
             return null;
         }
 
@@ -105,7 +106,7 @@ final class UnixServer extends EventEmitter implements ServerInterface
      */
     public function pause(): void
     {
-        if (!$this->listening || $this->watcherId === null) {
+        if (! $this->listening || $this->watcherId === null) {
             return;
         }
 
@@ -119,7 +120,7 @@ final class UnixServer extends EventEmitter implements ServerInterface
      */
     public function resume(): void
     {
-        if ($this->listening || !\is_resource($this->master)) {
+        if ($this->listening || ! \is_resource($this->master)) {
             return;
         }
 
@@ -136,7 +137,7 @@ final class UnixServer extends EventEmitter implements ServerInterface
      */
     public function close(): void
     {
-        if (!\is_resource($this->master)) {
+        if (! \is_resource($this->master)) {
             return;
         }
         $this->pause();

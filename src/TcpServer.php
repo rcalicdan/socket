@@ -25,7 +25,7 @@ use Hibla\Socket\Internals\SocketUtil;
 final class TcpServer extends EventEmitter implements ServerInterface
 {
     /**
-     *  @var resource 
+     *  @var resource
      */
     private readonly mixed $master;
 
@@ -41,7 +41,7 @@ final class TcpServer extends EventEmitter implements ServerInterface
             $uri = '127.0.0.1:' . $uri;
         }
 
-        if (!str_contains($uri, '://')) {
+        if (! str_contains($uri, '://')) {
             $uri = 'tcp://' . $uri;
         }
 
@@ -54,7 +54,7 @@ final class TcpServer extends EventEmitter implements ServerInterface
             $parts = parse_url($uri);
         }
 
-        if (!$parts || !isset($parts['scheme'], $parts['host'], $parts['port']) || $parts['scheme'] !== 'tcp') {
+        if (! $parts || ! isset($parts['scheme'], $parts['host'], $parts['port']) || $parts['scheme'] !== 'tcp') {
             throw new InvalidUriException(
                 \sprintf('Invalid URI "%s" given', $uri)
             );
@@ -95,17 +95,18 @@ final class TcpServer extends EventEmitter implements ServerInterface
      */
     public function getAddress(): ?string
     {
-        if (!\is_resource($this->master)) {
+        if (! \is_resource($this->master)) {
             return null;
         }
 
         $address = $this->address;
         $pos = strrpos($address, ':');
-        if ($pos !== false && strpos($address, ':') < $pos && !str_starts_with($address, '[')) {
+        if ($pos !== false && strpos($address, ':') < $pos && ! str_starts_with($address, '[')) {
             $addr = substr($address, 0, $pos);
             $port = substr($address, $pos + 1);
             $address = '[' . $addr . ']:' . $port;
         }
+
         return 'tcp://' . $address;
     }
 
@@ -114,7 +115,7 @@ final class TcpServer extends EventEmitter implements ServerInterface
      */
     public function pause(): void
     {
-        if (!$this->listening || $this->watcherId === null) {
+        if (! $this->listening || $this->watcherId === null) {
             return;
         }
         Loop::removeReadWatcher($this->watcherId);
@@ -127,7 +128,7 @@ final class TcpServer extends EventEmitter implements ServerInterface
      */
     public function resume(): void
     {
-        if ($this->listening || !\is_resource($this->master)) {
+        if ($this->listening || ! \is_resource($this->master)) {
             return;
         }
 
@@ -144,7 +145,7 @@ final class TcpServer extends EventEmitter implements ServerInterface
      */
     public function close(): void
     {
-        if (!\is_resource($this->master)) {
+        if (! \is_resource($this->master)) {
             return;
         }
         $this->pause();

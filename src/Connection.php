@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Hibla\Socket;
 
 use Evenement\EventEmitter;
+use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Stream\DuplexResourceStream;
 use Hibla\Stream\Interfaces\WritableStreamInterface;
 use Hibla\Stream\Util;
-use Hibla\Socket\Interfaces\ConnectionInterface;
 
 /**
  * Concrete implementation of a streaming socket connection.
@@ -98,7 +98,7 @@ final class Connection extends EventEmitter implements ConnectionInterface
 
     public function handleClose(): void
     {
-        if (!\is_resource($this->resource)) {
+        if (! \is_resource($this->resource)) {
             return;
         }
         @\stream_socket_shutdown($this->resource, STREAM_SHUT_RDWR);
@@ -106,7 +106,7 @@ final class Connection extends EventEmitter implements ConnectionInterface
 
     public function getRemoteAddress(): ?string
     {
-        if (!\is_resource($this->resource)) {
+        if (! \is_resource($this->resource)) {
             return null;
         }
 
@@ -118,7 +118,7 @@ final class Connection extends EventEmitter implements ConnectionInterface
 
     public function getLocalAddress(): ?string
     {
-        if (!\is_resource($this->resource)) {
+        if (! \is_resource($this->resource)) {
             return null;
         }
 
@@ -136,7 +136,7 @@ final class Connection extends EventEmitter implements ConnectionInterface
         }
 
         $pos = \strrpos($address, ':');
-        if ($pos !== false && \strpos($address, ':') < $pos && !str_starts_with($address, '[')) {
+        if ($pos !== false && \strpos($address, ':') < $pos && ! str_starts_with($address, '[')) {
             $address = '[' . \substr($address, 0, $pos) . ']:' . \substr($address, $pos + 1);
         }
 

@@ -24,6 +24,7 @@ class MockResolverWithTypes implements ResolverInterface
         $this->delaysByType[$type->value] = null;
         $this->errorsByType[$type->value] = null;
         $this->hangByType[$type->value] = false;
+
         return $this;
     }
 
@@ -33,6 +34,7 @@ class MockResolverWithTypes implements ResolverInterface
         $this->delaysByType[$type->value] = $delay;
         $this->errorsByType[$type->value] = null;
         $this->hangByType[$type->value] = false;
+
         return $this;
     }
 
@@ -42,6 +44,7 @@ class MockResolverWithTypes implements ResolverInterface
         $this->delaysByType[$type->value] = null;
         $this->ipsByType[$type->value] = null;
         $this->hangByType[$type->value] = false;
+
         return $this;
     }
 
@@ -49,6 +52,7 @@ class MockResolverWithTypes implements ResolverInterface
     {
         $this->hangByType[$type->value] = true;
         $this->delaysByType[$type->value] = null;
+
         return $this;
     }
 
@@ -60,7 +64,8 @@ class MockResolverWithTypes implements ResolverInterface
     public function resolve(string $domain): PromiseInterface
     {
         return $this->resolveAll($domain, RecordType::A)
-            ->then(fn($ips) => $ips[0] ?? null);
+            ->then(fn ($ips) => $ips[0] ?? null)
+        ;
     }
 
     public function resolveAll(string $domain, RecordType $type = RecordType::A): PromiseInterface
@@ -82,6 +87,7 @@ class MockResolverWithTypes implements ResolverInterface
             if ($error !== null) {
                 return Promise::rejected($error);
             }
+
             return Promise::resolved([]);
         }
 

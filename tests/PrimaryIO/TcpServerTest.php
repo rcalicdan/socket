@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Hibla\EventLoop\Loop;
 use Hibla\Socket\Exceptions\BindFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
@@ -12,7 +14,9 @@ describe('TCP Server', function () {
 
     afterEach(function () use (&$server, &$clients) {
         foreach ($clients as $client) {
-            if (is_resource($client)) @fclose($client);
+            if (is_resource($client)) {
+                @fclose($client);
+            }
         }
         $clients = [];
 
@@ -33,16 +37,17 @@ describe('TCP Server', function () {
         $address = $server->getAddress();
 
         expect($address)->not->toBeNull()
-            ->and($address)->not->toContain(':0');
+            ->and($address)->not->toContain(':0')
+        ;
 
         $port = parse_url($address, PHP_URL_PORT);
         expect($port)->toBeGreaterThan(0);
     });
 
     it('throws InvalidUriException for an invalid URI', function () {
-        expect(fn() => new TcpServer('127.0.0.1'))->toThrow(InvalidUriException::class);
-        expect(fn() => new TcpServer('localhost:8080'))->toThrow(InvalidUriException::class, 'Invalid URI');
-        expect(fn() => new TcpServer('unix:///tmp/sock'))->toThrow(InvalidUriException::class);
+        expect(fn () => new TcpServer('127.0.0.1'))->toThrow(InvalidUriException::class);
+        expect(fn () => new TcpServer('localhost:8080'))->toThrow(InvalidUriException::class, 'Invalid URI');
+        expect(fn () => new TcpServer('unix:///tmp/sock'))->toThrow(InvalidUriException::class);
     });
 
     it('throws BindFailedException when an address is already in use', function () use (&$server) {
@@ -50,7 +55,7 @@ describe('TCP Server', function () {
         $server = new TcpServer('127.0.0.1:' . $port);
 
         set_error_handler(function () {});
-        expect(fn() => new TcpServer('127.0.0.1:' . $port))->toThrow(BindFailedException::class);
+        expect(fn () => new TcpServer('127.0.0.1:' . $port))->toThrow(BindFailedException::class);
         restore_error_handler();
     })->skipOnWindows();
 
@@ -85,7 +90,8 @@ describe('TCP Server', function () {
         Loop::cancelTimer($timeout);
 
         expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
-            ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
+            ->and($connectionReceived->getRemoteAddress())->not->toBeNull()
+        ;
     });
 
     it('accepts multiple connections', function () use (&$server, &$clients) {
@@ -138,7 +144,7 @@ describe('TCP Server', function () {
             $server->resume();
         });
 
-        $timeout = Loop::addTimer(0.5, fn() => Loop::stop());
+        $timeout = Loop::addTimer(0.5, fn () => Loop::stop());
 
         Loop::run();
 
@@ -241,7 +247,7 @@ describe('TCP Server', function () {
             });
 
             Loop::addTimer(0.01, function () use (&$clients) {
-                if (!empty($clients) && is_resource(end($clients))) {
+                if (! empty($clients) && is_resource(end($clients))) {
                     fclose(end($clients));
                     array_pop($clients);
                 }
@@ -380,7 +386,6 @@ describe('TCP Server', function () {
         (function () {
             fclose($this->master);
         })->call($server);
-
 
         (function () {
             $this->acceptConnection();

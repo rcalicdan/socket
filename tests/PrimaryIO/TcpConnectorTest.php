@@ -3,55 +3,61 @@
 declare(strict_types=1);
 
 use Hibla\EventLoop\Loop;
+use Hibla\Promise\Exceptions\PromiseCancelledException;
 use Hibla\Socket\Connection;
 use Hibla\Socket\Exceptions\ConnectionFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
 use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Socket\TcpConnector;
-use Hibla\Promise\Exceptions\PromiseCancelledException;
 
-describe("Tcp Connector", function () {
+describe('Tcp Connector', function () {
     describe('URI validation', function () {
         it('accepts tcp:// scheme', function () {
             $connector = new TcpConnector();
 
-            expect(fn() => $connector->connect('tcp://127.0.0.1:80'))
-                ->not->toThrow(InvalidUriException::class);
+            expect(fn () => $connector->connect('tcp://127.0.0.1:80'))
+                ->not->toThrow(InvalidUriException::class)
+            ;
         });
 
         it('automatically prepends tcp:// scheme when missing', function () {
             $connector = new TcpConnector();
 
-            expect(fn() => $connector->connect('127.0.0.1:80'))
-                ->not->toThrow(InvalidUriException::class);
+            expect(fn () => $connector->connect('127.0.0.1:80'))
+                ->not->toThrow(InvalidUriException::class)
+            ;
         });
 
         it('rejects URI without port', function () {
             $connector = new TcpConnector();
 
-            expect(fn() => $connector->connect('tcp://127.0.0.1'))
-                ->toThrow(InvalidUriException::class, 'expected format: tcp://host:port');
+            expect(fn () => $connector->connect('tcp://127.0.0.1'))
+                ->toThrow(InvalidUriException::class, 'expected format: tcp://host:port')
+            ;
         });
 
         it('rejects URI without host', function () {
             $connector = new TcpConnector();
 
-            expect(fn() => $connector->connect('tcp://:8080'))
-                ->toThrow(InvalidUriException::class, 'expected format: tcp://host:port');
+            expect(fn () => $connector->connect('tcp://:8080'))
+                ->toThrow(InvalidUriException::class, 'expected format: tcp://host:port')
+            ;
         });
 
         it('rejects invalid scheme', function () {
             $connector = new TcpConnector();
 
-            expect(fn() => $connector->connect('http://127.0.0.1:80'))
-                ->toThrow(InvalidUriException::class, 'expected format: tcp://host:port');
+            expect(fn () => $connector->connect('http://127.0.0.1:80'))
+                ->toThrow(InvalidUriException::class, 'expected format: tcp://host:port')
+            ;
         });
 
         it('rejects non-IP hostname', function () {
             $connector = new TcpConnector();
 
-            expect(fn() => $connector->connect('tcp://example.com:80'))
-                ->toThrow(InvalidUriException::class, 'does not contain a valid host IP address');
+            expect(fn () => $connector->connect('tcp://example.com:80'))
+                ->toThrow(InvalidUriException::class, 'does not contain a valid host IP address')
+            ;
         });
 
         it('accepts IPv4 address', function () {
@@ -59,7 +65,7 @@ describe("Tcp Connector", function () {
 
             try {
                 $promise = $connector->connect('tcp://192.168.1.1:8080');
-                $promise->catch(fn() => null);
+                $promise->catch(fn () => null);
             } catch (InvalidUriException $e) {
                 throw $e;
             }
@@ -72,7 +78,7 @@ describe("Tcp Connector", function () {
 
             try {
                 $promise = $connector->connect('tcp://[::1]:8080');
-                $promise->catch(fn() => null);
+                $promise->catch(fn () => null);
             } catch (InvalidUriException $e) {
                 throw $e;
             }
@@ -111,7 +117,7 @@ describe("Tcp Connector", function () {
         });
 
         it('connects to IPv6 localhost', function () {
-            if (!@stream_socket_server('tcp://[::1]:0')) {
+            if (! @stream_socket_server('tcp://[::1]:0')) {
                 $this->markTestSkipped('IPv6 not supported on this system');
             }
 
@@ -158,7 +164,8 @@ describe("Tcp Connector", function () {
                         $resolved = true;
                         $connection = $conn;
                         Loop::stop();
-                    });
+                    })
+                ;
 
                 Loop::addTimer(0.1, function () {
                     Loop::stop();
@@ -214,6 +221,7 @@ describe("Tcp Connector", function () {
 
             try {
                 $promise->wait();
+
                 throw new Exception('Should have thrown');
             } catch (ConnectionFailedException $e) {
                 expect($e->getMessage())->toContain('failed');
@@ -232,6 +240,7 @@ describe("Tcp Connector", function () {
 
             try {
                 $promise->wait();
+
                 throw new Exception('Should have thrown');
             } catch (ConnectionFailedException $e) {
                 expect($e)->toBeInstanceOf(ConnectionFailedException::class);
@@ -341,8 +350,9 @@ describe("Tcp Connector", function () {
 
             Loop::run();
 
-            expect(fn() => $promise->wait())
-                ->toThrow(PromiseCancelledException::class, 'Cannot wait on a cancelled promise');
+            expect(fn () => $promise->wait())
+                ->toThrow(PromiseCancelledException::class, 'Cannot wait on a cancelled promise')
+            ;
         });
     });
 
@@ -357,12 +367,12 @@ describe("Tcp Connector", function () {
                 $connector = new TcpConnector();
 
                 $promise1 = $connector->connect("tcp://127.0.0.1:{$port}");
-                Loop::addTimer(0.01, fn() => Loop::stop());
+                Loop::addTimer(0.01, fn () => Loop::stop());
                 Loop::run();
                 $connection1 = $promise1->wait();
 
                 $promise2 = $connector->connect("tcp://127.0.0.1:{$port}");
-                Loop::addTimer(0.01, fn() => Loop::stop());
+                Loop::addTimer(0.01, fn () => Loop::stop());
                 Loop::run();
                 $connection2 = $promise2->wait();
 

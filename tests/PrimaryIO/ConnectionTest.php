@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Hibla\EventLoop\Loop;
 use Hibla\Socket\Connection;
 use Hibla\Socket\Interfaces\ConnectionInterface;
@@ -59,7 +61,8 @@ describe('Connection', function () {
 
         expect($remoteAddress)->not->toBeNull()
             ->and($remoteAddress)->toContain('tcp://')
-            ->and($remoteAddress)->toContain('127.0.0.1');
+            ->and($remoteAddress)->toContain('127.0.0.1')
+        ;
 
         $connection->close();
         fclose($client);
@@ -73,7 +76,8 @@ describe('Connection', function () {
 
         expect($localAddress)->not->toBeNull()
             ->and($localAddress)->toContain('tcp://')
-            ->and($localAddress)->toContain('127.0.0.1');
+            ->and($localAddress)->toContain('127.0.0.1')
+        ;
 
         $connection->close();
         fclose($client);
@@ -127,7 +131,7 @@ describe('Connection', function () {
 
         $receivedData = '';
         $watcherId = null;
-        
+
         $watcherId = Loop::addReadWatcher($client, function () use ($client, &$receivedData, &$watcherId) {
             $receivedData = fread($client, 1024);
             if ($watcherId) {
@@ -145,7 +149,7 @@ describe('Connection', function () {
         [$client, $server] = creat_socket_pair();
         $serverConnection = new Connection($server);
 
-        $result = $serverConnection->write("test");
+        $result = $serverConnection->write('test');
 
         expect($result)->toBeTrue();
     });
@@ -203,8 +207,8 @@ describe('Connection', function () {
             expect($dataCount)->toBe(0);
             $serverConnection->resume();
             fwrite($client, "Message 2\n");
-            
-            Loop::addTimer(0.1, fn() => Loop::stop());
+
+            Loop::addTimer(0.1, fn () => Loop::stop());
         });
 
         run_with_timeout(1.0);
@@ -248,7 +252,8 @@ describe('Connection', function () {
         $data = fread($client, 1024);
 
         expect($data)->toBe("Goodbye\n")
-            ->and($closeReceived)->toBeTrue();
+            ->and($closeReceived)->toBeTrue()
+        ;
 
         fclose($client);
     });
@@ -282,7 +287,8 @@ describe('Connection', function () {
         $serverConnection->close();
 
         expect($serverConnection->getRemoteAddress())->toBeNull()
-            ->and($serverConnection->getLocalAddress())->toBeNull();
+            ->and($serverConnection->getLocalAddress())->toBeNull()
+        ;
 
         fclose($client);
     });
@@ -303,7 +309,8 @@ describe('Connection', function () {
         expect($remoteAddress)->not->toBeNull()
             ->and($remoteAddress)->toStartWith('unix://')
             ->and($localAddress)->not->toBeNull()
-            ->and($localAddress)->toStartWith('unix://');
+            ->and($localAddress)->toStartWith('unix://')
+        ;
 
         $connection->close();
         fclose($client);
@@ -317,10 +324,10 @@ describe('Connection', function () {
 
         $serverConnection->on('data', function ($data) use (&$receivedData, $serverConnection) {
             $receivedData[] = $data;
-            $serverConnection->write("Echo: " . $data);
-            
+            $serverConnection->write('Echo: ' . $data);
+
             if (count($receivedData) >= 2) {
-                 Loop::addTimer(0.01, fn() => Loop::stop());
+                Loop::addTimer(0.01, fn () => Loop::stop());
             }
         });
 
@@ -343,7 +350,8 @@ describe('Connection', function () {
 
         expect($receivedData)->not->toBeEmpty()
             ->and($response)->toContain("Echo: Message 1\n")
-            ->and($response)->toContain("Echo: Message 2\n");
+            ->and($response)->toContain("Echo: Message 2\n")
+        ;
     });
 
     it('emits drain event when write buffer empties', function () use (&$client, &$serverConnection) {
@@ -358,10 +366,10 @@ describe('Connection', function () {
 
         $largeData = str_repeat('x', 100000);
         $serverConnection->write($largeData);
-        
-        Loop::addTimer(0.01, function() use ($client) {
-             stream_set_blocking($client, false);
-             fread($client, 8192);
+
+        Loop::addTimer(0.01, function () use ($client) {
+            stream_set_blocking($client, false);
+            fread($client, 8192);
         });
 
         run_with_timeout(1.0);
@@ -385,7 +393,7 @@ describe('Connection', function () {
         $watcherId = Loop::addReadWatcher($client, function () use ($client, &$received, &$watcherId) {
             $chunk = fread($client, 1024);
             $received .= $chunk;
-            
+
             if (str_contains($received, "Line 9\n")) {
                 if ($watcherId) {
                     Loop::removeReadWatcher($watcherId);
@@ -397,7 +405,8 @@ describe('Connection', function () {
         run_with_timeout(1.0);
 
         expect($received)->toContain("Line 0\n")
-            ->and($received)->toContain("Line 9\n");
+            ->and($received)->toContain("Line 9\n")
+        ;
     });
 
     it('close is idempotent', function () use (&$client, &$serverConnection) {

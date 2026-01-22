@@ -14,14 +14,14 @@ use Hibla\Socket\Interfaces\ConnectorInterface;
 
 /**
  * Happy Eyeballs Connection Builder
- * 
+ *
  * Implements the RFC 8305 algorithm for racing IPv6 and IPv4 connections.
- * 
+ *
  * Key RFC 8305 features:
  * - Resolution Delay: 50ms delay for IPv4 after IPv6 starts (Section 3)
  * - Connection Attempt Delay: 250ms between connection attempts (Section 5)
  * - Interleaved connection attempts alternating between IPv6 and IPv4
- * 
+ *
  * @internal
  */
 final class HappyEyeBallsConnectionBuilder
@@ -37,27 +37,27 @@ final class HappyEyeBallsConnectionBuilder
     private const float CONNECTION_ATTEMPT_DELAY = 0.25;
 
     /**
-     *  @var array<int, PromiseInterface> 
+     *  @var array<int, PromiseInterface>
      */
     private array $resolverPromises = [];
 
     /**
-     * @var array<int, PromiseInterface> 
+     * @var array<int, PromiseInterface>
      */
     private array $connectionPromises = [];
 
     /**
-     *  @var list<string> Queue of IP addresses to connect to 
+     *  @var list<string> Queue of IP addresses to connect to
      */
     private array $connectQueue = [];
 
     /**
-     *  @var array<string, mixed> 
+     *  @var array<string, mixed>
      */
     private readonly array $parts;
 
     /**
-     *  @var array{4: bool, 28: bool} Track resolution status by RecordType value 
+     *  @var array{4: bool, 28: bool} Track resolution status by RecordType value
      */
     private array $resolved = [
         RecordType::A->value => false,
@@ -121,20 +121,22 @@ final class HappyEyeBallsConnectionBuilder
         };
 
         // Check if IPv6 pre-check is enabled and IPv6 is actually routable
-        if ($this->ipv6Check && !IPv6ConnectivityChecker::isRoutable()) {
+        if ($this->ipv6Check && ! IPv6ConnectivityChecker::isRoutable()) {
             // Skip IPv6 entirely
             $this->resolved[RecordType::AAAA->value] = true;
 
             // Start IPv4 (A) resolution immediately without delay
             $this->resolverPromises[RecordType::A->value] = $this->resolve(RecordType::A, $promise)
-                ->then($lookupResolve(RecordType::A));
+                ->then($lookupResolve(RecordType::A))
+            ;
         } else {
             // Full RFC 8305 Dual Stack implementation
             // (Either ipv6Check is disabled, or IPv6 is routable)
 
             // Start IPv6 (AAAA) resolution immediately
             $this->resolverPromises[RecordType::AAAA->value] = $this->resolve(RecordType::AAAA, $promise)
-                ->then($lookupResolve(RecordType::AAAA));
+                ->then($lookupResolve(RecordType::AAAA))
+            ;
 
             // Start IPv4 (A) resolution with potential delay per RFC 8305
             $this->resolverPromises[RecordType::A->value] = $this->resolve(RecordType::A, $promise)
@@ -151,7 +153,8 @@ final class HappyEyeBallsConnectionBuilder
                     // Delay IPv4 processing per RFC 8305 Section 3
                     return $this->delayIPv4Resolution($ips);
                 })
-                ->then($lookupResolve(RecordType::A));
+                ->then($lookupResolve(RecordType::A))
+            ;
         }
 
         $promise->onCancel(function () use ($promise): void {
@@ -167,7 +170,7 @@ final class HappyEyeBallsConnectionBuilder
 
     /**
      * Resolve DNS records for specified type
-     * 
+     *
      * @return PromiseInterface<list<string>>
      */
     private function resolve(RecordType $type, Promise $rejectTarget): PromiseInterface
@@ -208,7 +211,7 @@ final class HappyEyeBallsConnectionBuilder
 
     /**
      * Delay IPv4 resolution per RFC 8305 Section 3
-     * 
+     *
      * @param list<string> $ips
      * @return PromiseInterface<list<string>>
      */
@@ -223,7 +226,7 @@ final class HappyEyeBallsConnectionBuilder
             self::RESOLUTION_DELAY,
             function () use ($delayedPromise, $ips, &$cancelled): void {
                 $this->resolutionDelayTimerId = null;
-                if (!$cancelled && !$this->isResolved) {
+                if (! $cancelled && ! $this->isResolved) {
                     $delayedPromise->resolve($ips);
                 }
             }
@@ -233,7 +236,7 @@ final class HappyEyeBallsConnectionBuilder
         $ipv6Promise = $this->resolverPromises[RecordType::AAAA->value] ?? null;
         if ($ipv6Promise !== null) {
             $ipv6Promise->then(function () use ($delayedPromise, $ips, &$cancelled): void {
-                if (!$cancelled && !$this->isResolved && $this->resolutionDelayTimerId !== null) {
+                if (! $cancelled && ! $this->isResolved && $this->resolutionDelayTimerId !== null) {
                     Loop::cancelTimer($this->resolutionDelayTimerId);
                     $this->resolutionDelayTimerId = null;
                     $delayedPromise->resolve($ips);
@@ -255,7 +258,7 @@ final class HappyEyeBallsConnectionBuilder
 
     /**
      * Check and start next connection attempt
-     * 
+     *
      * Per RFC 8305 Section 5: Connection attempts are started with a fixed delay
      * between them, regardless of whether previous attempts have failed.
      */
@@ -299,7 +302,7 @@ final class HappyEyeBallsConnectionBuilder
                     $e->getMessage()
                 );
 
-                if (!str_contains($ip, ':')) {
+                if (! str_contains($ip, ':')) {
                     $this->lastError4 = $message;
                     $this->lastErrorFamily = 4;
                 } else {
@@ -327,13 +330,13 @@ final class HappyEyeBallsConnectionBuilder
         // Schedule next attempt per RFC 8305 Section 5
         if (
             $this->nextAttemptTimerId === null &&
-            (\count($this->connectQueue) > 0 || !$this->hasBeenResolved())
+            (\count($this->connectQueue) > 0 || ! $this->hasBeenResolved())
         ) {
             $this->nextAttemptTimerId = Loop::addTimer(
                 self::CONNECTION_ATTEMPT_DELAY,
                 function () use ($promise): void {
                     $this->nextAttemptTimerId = null;
-                    if (!$this->isResolved && $this->connectQueue !== []) {
+                    if (! $this->isResolved && $this->connectQueue !== []) {
                         $this->check($promise);
                     }
                 }
@@ -347,12 +350,13 @@ final class HappyEyeBallsConnectionBuilder
     private function attemptConnection(string $ip): PromiseInterface
     {
         $uri = $this->buildUri($this->parts, $this->host, $ip);
+
         return $this->connector->connect($uri);
     }
 
     /**
      * Mix IPs into connection queue using RFC 8305 Section 4 interleaving
-     * 
+     *
      * @param list<string> $ips
      */
     private function mixIpsIntoConnectQueue(array $ips): void
@@ -375,7 +379,7 @@ final class HappyEyeBallsConnectionBuilder
 
     /**
      * Build URI with resolved IP
-     * 
+     *
      * @param array<string, mixed> $parts
      */
     private function buildUri(array $parts, string $host, string $ip): string

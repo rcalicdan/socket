@@ -27,7 +27,8 @@ final class TimeoutConnector implements ConnectorInterface
     public function __construct(
         private readonly ConnectorInterface $connector,
         private readonly float $timeout
-    ) {}
+    ) {
+    }
 
     /**
      * {@inheritDoc}

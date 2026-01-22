@@ -25,6 +25,7 @@ class MockResolver implements ResolverInterface
         $this->ip = $ip;
         $this->error = null;
         $this->shouldHang = false;
+
         return $this;
     }
 
@@ -34,6 +35,7 @@ class MockResolver implements ResolverInterface
         $this->error = $error;
         $this->ip = null;
         $this->shouldHang = false;
+
         return $this;
     }
 
@@ -41,6 +43,7 @@ class MockResolver implements ResolverInterface
     {
         $this->shouldHang = true;
         $this->delay = null;
+
         return $this;
     }
 
@@ -50,6 +53,7 @@ class MockResolver implements ResolverInterface
         $this->delay = null;
         $this->error = null;
         $this->shouldHang = false;
+
         return $this;
     }
 
@@ -59,6 +63,7 @@ class MockResolver implements ResolverInterface
         $this->delay = null;
         $this->ip = null;
         $this->shouldHang = false;
+
         return $this;
     }
 
@@ -100,7 +105,7 @@ class MockResolver implements ResolverInterface
 
     public function resolveAll(string $domain, RecordType $type = RecordType::A): PromiseInterface
     {
-        return $this->resolve($domain)->then(fn($ip) => [$ip]);
+        return $this->resolve($domain)->then(fn ($ip) => [$ip]);
     }
 
     public function reset(): void

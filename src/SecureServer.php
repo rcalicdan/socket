@@ -9,8 +9,8 @@ use Hibla\Socket\Exceptions\EncryptionFailedException;
 use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Socket\Interfaces\ServerInterface;
 use Hibla\Socket\Internals\StreamEncryption;
-use UnexpectedValueException;
 use Throwable;
+use UnexpectedValueException;
 
 /**
  * A server that encrypts incoming connections using TLS (formerly SSL).
@@ -40,7 +40,7 @@ final class SecureServer extends EventEmitter implements ServerInterface
 
         $this->encryption = new StreamEncryption(isServer: true);
 
-        $this->server->on('error', fn(Throwable $error) => $this->emit('error', [$error]));
+        $this->server->on('error', fn (Throwable $error) => $this->emit('error', [$error]));
         $this->server->on('connection', $this->handleConnection(...));
     }
 
@@ -85,11 +85,12 @@ final class SecureServer extends EventEmitter implements ServerInterface
 
     private function handleConnection(ConnectionInterface $connection): void
     {
-        if (!$connection instanceof Connection) {
+        if (! $connection instanceof Connection) {
             $this->emit('error', [
-                new UnexpectedValueException('Base server does not use internal Connection class exposing stream resource')
+                new UnexpectedValueException('Base server does not use internal Connection class exposing stream resource'),
             ]);
             $connection->close();
+
             return;
         }
 
@@ -116,6 +117,7 @@ final class SecureServer extends EventEmitter implements ServerInterface
                     $this->emit('error', [$wrappedError]);
                     $connection->close();
                 }
-            );
+            )
+        ;
     }
 }

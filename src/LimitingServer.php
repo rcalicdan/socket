@@ -26,7 +26,7 @@ use Throwable;
 final class LimitingServer extends EventEmitter implements ServerInterface
 {
     /**
-     *  @var array<int, ConnectionInterface> 
+     *  @var array<int, ConnectionInterface>
      */
     private array $connections = [];
 
@@ -67,10 +67,10 @@ final class LimitingServer extends EventEmitter implements ServerInterface
      */
     public function pause(): void
     {
-        if (!$this->manuPaused) {
+        if (! $this->manuPaused) {
             $this->manuPaused = true;
 
-            if (!$this->autoPaused) {
+            if (! $this->autoPaused) {
                 $this->server->pause();
             }
         }
@@ -84,7 +84,7 @@ final class LimitingServer extends EventEmitter implements ServerInterface
         if ($this->manuPaused) {
             $this->manuPaused = false;
 
-            if (!$this->autoPaused) {
+            if (! $this->autoPaused) {
                 $this->server->resume();
             }
         }
@@ -106,6 +106,7 @@ final class LimitingServer extends EventEmitter implements ServerInterface
                 'Connection rejected because server reached connection limit'
             ));
             $connection->close();
+
             return;
         }
 
@@ -116,10 +117,10 @@ final class LimitingServer extends EventEmitter implements ServerInterface
         });
 
         // Pause server if limit reached and pauseOnLimit is enabled
-        if ($this->pauseOnLimit && !$this->autoPaused && \count($this->connections) >= $this->connectionLimit) {
+        if ($this->pauseOnLimit && ! $this->autoPaused && \count($this->connections) >= $this->connectionLimit) {
             $this->autoPaused = true;
 
-            if (!$this->manuPaused) {
+            if (! $this->manuPaused) {
                 $this->server->pause();
             }
         }
@@ -138,7 +139,7 @@ final class LimitingServer extends EventEmitter implements ServerInterface
         if ($this->autoPaused && \count($this->connections) < $this->connectionLimit) {
             $this->autoPaused = false;
 
-            if (!$this->manuPaused) {
+            if (! $this->manuPaused) {
                 $this->server->resume();
             }
         }

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Mocks;
 
-use Hibla\EventLoop\Loop;
 use Hibla\Promise\Interfaces\PromiseInterface;
 use Hibla\Promise\Promise;
-use Hibla\Socket\Interfaces\ConnectorInterface;
 use Hibla\Socket\Interfaces\ConnectionInterface;
+use Hibla\Socket\Interfaces\ConnectorInterface;
 
 /**
  * Mock connector that can track connection attempts and simulate different responses per URI
@@ -17,7 +16,7 @@ class MockConnectorWithFailureTracking implements ConnectorInterface
 {
     public array $connectionAttempts = [];
     public ?string $lastUri = null;
-    
+
     private array $successByUri = [];
     private array $failureByUri = [];
     private array $hangByUri = [];
@@ -33,6 +32,7 @@ class MockConnectorWithFailureTracking implements ConnectorInterface
         $this->defaultSuccess = $connection;
         $this->defaultFailure = null;
         $this->hangAll = false;
+
         return $this;
     }
 
@@ -44,6 +44,7 @@ class MockConnectorWithFailureTracking implements ConnectorInterface
         $this->defaultFailure = $error;
         $this->defaultSuccess = null;
         $this->hangAll = false;
+
         return $this;
     }
 
@@ -55,6 +56,7 @@ class MockConnectorWithFailureTracking implements ConnectorInterface
         $this->hangAll = true;
         $this->defaultSuccess = null;
         $this->defaultFailure = null;
+
         return $this;
     }
 
@@ -67,6 +69,7 @@ class MockConnectorWithFailureTracking implements ConnectorInterface
         $this->successByUri[$normalized] = $connection;
         unset($this->failureByUri[$normalized]);
         unset($this->hangByUri[$normalized]);
+
         return $this;
     }
 
@@ -79,6 +82,7 @@ class MockConnectorWithFailureTracking implements ConnectorInterface
         $this->failureByUri[$normalized] = $error;
         unset($this->successByUri[$normalized]);
         unset($this->hangByUri[$normalized]);
+
         return $this;
     }
 
@@ -91,6 +95,7 @@ class MockConnectorWithFailureTracking implements ConnectorInterface
         $this->hangByUri[$normalized] = true;
         unset($this->successByUri[$normalized]);
         unset($this->failureByUri[$normalized]);
+
         return $this;
     }
 
@@ -101,6 +106,7 @@ class MockConnectorWithFailureTracking implements ConnectorInterface
     {
         $this->defaultFailure = $error;
         $this->defaultSuccess = null;
+
         return $this;
     }
 

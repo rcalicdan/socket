@@ -27,9 +27,9 @@ final class UnixConnector implements ConnectorInterface
      */
     public function connect(string $path): PromiseInterface
     {
-        if (!str_contains($path, '://')) {
+        if (! str_contains($path, '://')) {
             $path = 'unix://' . $path;
-        } elseif (!str_starts_with($path, 'unix://')) {
+        } elseif (! str_starts_with($path, 'unix://')) {
             throw new InvalidUriException(
                 \sprintf('Given URI "%s" is invalid (expected format: unix:///path/to/socket)', $path),
                 \defined('SOCKET_EINVAL') ? SOCKET_EINVAL : (\defined('PCNTL_EINVAL') ? PCNTL_EINVAL : 22)
@@ -38,14 +38,14 @@ final class UnixConnector implements ConnectorInterface
 
         $socketPath = substr($path, 7);
 
-        if (!file_exists($socketPath)) {
+        if (! file_exists($socketPath)) {
             return Promise::rejected(new ConnectionFailedException(
                 \sprintf('Unix socket "%s" does not exist', $socketPath),
                 \defined('SOCKET_ENOENT') ? SOCKET_ENOENT : 2
             ));
         }
 
-        if (!is_readable($socketPath) || filetype($socketPath) !== 'socket') {
+        if (! is_readable($socketPath) || filetype($socketPath) !== 'socket') {
             return Promise::rejected(new ConnectionFailedException(
                 \sprintf('Path "%s" is not a valid Unix domain socket', $socketPath),
                 \defined('SOCKET_ENOTSOCK') ? SOCKET_ENOTSOCK : 88
@@ -56,7 +56,6 @@ final class UnixConnector implements ConnectorInterface
 
         if ($resource === false) {
             return Promise::rejected(new ConnectionFailedException(
-
                 \sprintf('Unable to connect to unix domain socket "%s": %s', $socketPath, $errstr),
                 $errno
             ));

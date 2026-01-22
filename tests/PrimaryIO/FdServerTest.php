@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use Hibla\EventLoop\Loop;
 use Hibla\Socket\Exceptions\BindFailedException;
 use Hibla\Socket\Exceptions\InvalidUriException;
-use Hibla\Socket\Interfaces\ConnectionInterface;
 use Hibla\Socket\FdServer;
+use Hibla\Socket\Interfaces\ConnectionInterface;
 
 describe('FD Server', function () {
     $server = null;
@@ -13,7 +15,9 @@ describe('FD Server', function () {
 
     afterEach(function () use (&$server, &$clients, &$listeningSockets) {
         foreach ($clients as $client) {
-            if (is_resource($client)) @fclose($client);
+            if (is_resource($client)) {
+                @fclose($client);
+            }
         }
         $clients = [];
 
@@ -23,13 +27,15 @@ describe('FD Server', function () {
         }
 
         foreach ($listeningSockets as $socket) {
-            if (is_resource($socket)) @fclose($socket);
+            if (is_resource($socket)) {
+                @fclose($socket);
+            }
         }
         $listeningSockets = [];
     });
 
     it('constructs with a valid file descriptor number', function () use (&$server, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -41,7 +47,7 @@ describe('FD Server', function () {
     });
 
     it('constructs with php://fd/ string format', function () use (&$server, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -53,35 +59,35 @@ describe('FD Server', function () {
     });
 
     it('throws InvalidUriException for invalid file descriptor', function () {
-        expect(fn() => new FdServer(-1))->toThrow(InvalidUriException::class);
-        expect(fn() => new FdServer('invalid'))->toThrow(InvalidUriException::class);
-        expect(fn() => new FdServer('php://fd/abc'))->toThrow(InvalidUriException::class);
+        expect(fn () => new FdServer(-1))->toThrow(InvalidUriException::class);
+        expect(fn () => new FdServer('invalid'))->toThrow(InvalidUriException::class);
+        expect(fn () => new FdServer('php://fd/abc'))->toThrow(InvalidUriException::class);
     });
 
     it('throws BindFailedException for non-existent file descriptor', function () {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
         // Use a very high FD number that's unlikely to exist
-        expect(fn() => new FdServer(9999))->toThrow(BindFailedException::class);
+        expect(fn () => new FdServer(9999))->toThrow(BindFailedException::class);
     });
 
     it('throws BindFailedException for non-socket file descriptor', function () {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
         $tmpFile = tmpfile();
         $fd = get_fd_from_socket($tmpFile);
 
-        expect(fn() => new FdServer($fd))->toThrow(BindFailedException::class, 'not a valid TCP or Unix socket');
-        
+        expect(fn () => new FdServer($fd))->toThrow(BindFailedException::class, 'not a valid TCP or Unix socket');
+
         fclose($tmpFile);
     });
 
     it('throws BindFailedException for already connected socket', function () use (&$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -91,13 +97,13 @@ describe('FD Server', function () {
         $client = stream_socket_client('tcp://' . $serverAddr);
         $fd = get_fd_from_socket($client);
 
-        expect(fn() => new FdServer($fd))->toThrow(BindFailedException::class);
+        expect(fn () => new FdServer($fd))->toThrow(BindFailedException::class);
 
         fclose($client);
     });
 
     it('closes the server and stops listening', function () use (&$server, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -112,7 +118,7 @@ describe('FD Server', function () {
     });
 
     it('accepts a connection and emits a connection event', function () use (&$server, &$clients, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -140,11 +146,12 @@ describe('FD Server', function () {
         Loop::cancelTimer($timeout);
 
         expect($connectionReceived)->toBeInstanceOf(ConnectionInterface::class)
-            ->and($connectionReceived->getRemoteAddress())->not->toBeNull();
+            ->and($connectionReceived->getRemoteAddress())->not->toBeNull()
+        ;
     });
 
     it('accepts multiple connections', function () use (&$server, &$clients, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -180,7 +187,7 @@ describe('FD Server', function () {
     });
 
     it('pauses and resumes accepting connections', function () use (&$server, &$clients, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -207,7 +214,7 @@ describe('FD Server', function () {
             $server->resume();
         });
 
-        $timeout = Loop::addTimer(0.5, fn() => Loop::stop());
+        $timeout = Loop::addTimer(0.5, fn () => Loop::stop());
 
         Loop::run();
 
@@ -217,7 +224,7 @@ describe('FD Server', function () {
     });
 
     it('pause after pause is no-op', function () use (&$server, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -233,7 +240,7 @@ describe('FD Server', function () {
     });
 
     it('resume without pause is no-op', function () use (&$server, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -248,7 +255,7 @@ describe('FD Server', function () {
     });
 
     it('close twice is no-op', function () use (&$server, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -264,7 +271,7 @@ describe('FD Server', function () {
     });
 
     it('emits data event when client sends data', function () use (&$server, &$clients, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -299,7 +306,7 @@ describe('FD Server', function () {
     });
 
     it('correctly handles Unix socket addresses', function () use (&$server, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -320,7 +327,7 @@ describe('FD Server', function () {
     });
 
     it('correctly handles IPv6 addresses', function () use (&$server, &$clients, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -357,7 +364,7 @@ describe('FD Server', function () {
     });
 
     it('gets local address from connection', function () use (&$server, &$clients, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -388,7 +395,7 @@ describe('FD Server', function () {
     });
 
     it('emits error when accept fails', function () use (&$server, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 
@@ -415,7 +422,7 @@ describe('FD Server', function () {
     });
 
     it('connection can write data back to client', function () use (&$server, &$clients, &$listeningSockets) {
-        if (!is_dir('/dev/fd')) {
+        if (! is_dir('/dev/fd')) {
             test()->skip('Not supported on your platform (requires /dev/fd)');
         }
 

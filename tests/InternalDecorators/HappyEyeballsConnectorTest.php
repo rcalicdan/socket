@@ -20,7 +20,7 @@ describe('HappyEyeBallsConnector', function () {
     test('connects directly when URI contains IPv4 address', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolver();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
         $connection = new MockConnection('tcp://127.0.0.1:8080');
 
         $mockConnector->setImmediateSuccess($connection);
@@ -30,13 +30,14 @@ describe('HappyEyeBallsConnector', function () {
 
         expect($result)->toBe($connection)
             ->and($mockConnector->lastUri)->toBe('tcp://127.0.0.1:8080')
-            ->and($mockResolver->resolveCalled)->toBeFalse();
+            ->and($mockResolver->resolveCalled)->toBeFalse()
+        ;
     });
 
     test('connects directly when URI contains IPv6 address', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolver();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
         $connection = new MockConnection('tcp://[::1]:8080');
 
         $mockConnector->setImmediateSuccess($connection);
@@ -46,13 +47,14 @@ describe('HappyEyeBallsConnector', function () {
 
         expect($result)->toBe($connection)
             ->and($mockConnector->lastUri)->toBe('tcp://[::1]:8080')
-            ->and($mockResolver->resolveCalled)->toBeFalse();
+            ->and($mockResolver->resolveCalled)->toBeFalse()
+        ;
     });
 
     test('adds scheme when missing', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolver();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockConnector->setImmediateSuccess(new MockConnection());
 
@@ -64,29 +66,31 @@ describe('HappyEyeBallsConnector', function () {
     test('rejects with invalid URI', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolver();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $promise = $connector->connect('://invalid');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(InvalidUriException::class, 'invalid (EINVAL)');
+        expect(fn () => $promise->wait())
+            ->toThrow(InvalidUriException::class, 'invalid (EINVAL)')
+        ;
     });
 
     test('rejects with URI missing host', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolver();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $promise = $connector->connect('tcp://');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(InvalidUriException::class, 'invalid (EINVAL)');
+        expect(fn () => $promise->wait())
+            ->toThrow(InvalidUriException::class, 'invalid (EINVAL)')
+        ;
     });
 
     test('resolves IPv4 and IPv6 in parallel', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
         $connection = new MockConnection('tcp://93.184.216.34:80');
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, ['2606:2800:220:1:248:1893:25c8:1946']);
@@ -98,13 +102,14 @@ describe('HappyEyeBallsConnector', function () {
 
         expect($result)->toBe($connection)
             ->and($mockResolver->resolveAllCalledForType(RecordType::AAAA))->toBeTrue()
-            ->and($mockResolver->resolveAllCalledForType(RecordType::A))->toBeTrue();
+            ->and($mockResolver->resolveAllCalledForType(RecordType::A))->toBeTrue()
+        ;
     });
 
     test('prefers IPv6 over IPv4 when both available', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
         $ipv6Connection = new MockConnection('tcp://[2606:2800:220:1:248:1893:25c8:1946]:80');
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, ['2606:2800:220:1:248:1893:25c8:1946']);
@@ -116,13 +121,14 @@ describe('HappyEyeBallsConnector', function () {
 
         expect($result)->toBe($ipv6Connection)
 
-            ->and($mockConnector->lastUri)->toContain('[2606:2800:220:1:248:1893:25c8:1946]');
+            ->and($mockConnector->lastUri)->toContain('[2606:2800:220:1:248:1893:25c8:1946]')
+        ;
     });
 
     test('falls back to IPv4 when IPv6 fails', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
         $ipv4Connection = new MockConnection('tcp://93.184.216.34:80');
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, ['2606:2800:220:1:248:1893:25c8:1946']);
@@ -138,13 +144,14 @@ describe('HappyEyeBallsConnector', function () {
         $result = $promise->wait();
 
         expect($result)->toBe($ipv4Connection)
-            ->and($mockConnector->connectionAttempts)->toHaveCount(2);
+            ->and($mockConnector->connectionAttempts)->toHaveCount(2)
+        ;
     });
 
     test('delays IPv4 resolution by 50ms per RFC 8305', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
         $connection = new MockConnection();
 
         $startTime = microtime(true);
@@ -160,18 +167,19 @@ describe('HappyEyeBallsConnector', function () {
 
         expect($result)->toBe($connection)
             ->and($elapsed)->toBeGreaterThanOrEqual(0.05)
-            ->and($elapsed)->toBeLessThan(0.15);
+            ->and($elapsed)->toBeLessThan(0.15)
+        ;
     });
 
     test('attempts connections with 250ms delay per RFC 8305', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, [
             '2606:2800:220:1::1',
             '2606:2800:220:1::2',
-            '2606:2800:220:1::3'
+            '2606:2800:220:1::3',
         ]);
         $mockResolver->setImmediateSuccessForType(RecordType::A, []);
 
@@ -192,21 +200,22 @@ describe('HappyEyeBallsConnector', function () {
 
         expect($mockConnector->connectionAttempts)->toHaveCount(3)
             ->and($elapsed)->toBeGreaterThanOrEqual(0.50)
-            ->and($elapsed)->toBeLessThan(0.60);
+            ->and($elapsed)->toBeLessThan(0.60)
+        ;
     });
 
     test('interleaves IPv4 and IPv6 connection attempts', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, [
             '2606:2800:220:1::1',
-            '2606:2800:220:1::2'
+            '2606:2800:220:1::2',
         ]);
         $mockResolver->setImmediateSuccessForType(RecordType::A, [
             '93.184.216.34',
-            '93.184.216.35'
+            '93.184.216.35',
         ]);
 
         $mockConnector->setFailureForAllUris(
@@ -236,19 +245,21 @@ describe('HappyEyeBallsConnector', function () {
         }
 
         expect($ipv6Count)->toBe(2)
-            ->and($ipv4Count)->toBe(2);
+            ->and($ipv4Count)->toBe(2)
+        ;
 
         expect($attempts[0])->toContain('[');
         expect(str_contains($attempts[0], '['))->toBeTrue()
             ->and(str_contains($attempts[1], '['))->toBeFalse()
             ->and(str_contains($attempts[2], '['))->toBeTrue()
-            ->and(str_contains($attempts[3], '['))->toBeFalse();
+            ->and(str_contains($attempts[3], '['))->toBeFalse()
+        ;
     });
 
     test('cancellation during DNS lookup', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockResolver->setHangForType(RecordType::AAAA);
         $mockResolver->setHangForType(RecordType::A);
@@ -262,7 +273,7 @@ describe('HappyEyeBallsConnector', function () {
     test('cancellation during connection attempts', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, ['2606:2800:220:1::1']);
         $mockResolver->setImmediateSuccessForType(RecordType::A, ['93.184.216.34']);
@@ -280,21 +291,22 @@ describe('HappyEyeBallsConnector', function () {
     test('both DNS lookups fail', function () {
         $mockConnector = new MockConnector();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockResolver->setFailureForType(RecordType::AAAA, new RecordNotFoundException('IPv6 lookup failed'));
         $mockResolver->setFailureForType(RecordType::A, new RecordNotFoundException('IPv4 lookup failed'));
 
         $promise = $connector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(ConnectionFailedException::class, 'failed during DNS lookup');
+        expect(fn () => $promise->wait())
+            ->toThrow(ConnectionFailedException::class, 'failed during DNS lookup')
+        ;
     });
 
     test('all connection attempts fail', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, ['2606:2800:220:1::1']);
         $mockResolver->setImmediateSuccessForType(RecordType::A, ['93.184.216.34']);
@@ -310,14 +322,15 @@ describe('HappyEyeBallsConnector', function () {
 
         $promise = $connector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(ConnectionFailedException::class, 'Connection to tcp://example.com:80 failed');
+        expect(fn () => $promise->wait())
+            ->toThrow(ConnectionFailedException::class, 'Connection to tcp://example.com:80 failed')
+        ;
     });
 
     test('error message includes both IPv4 and IPv6 errors', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, ['2606:2800:220:1::1']);
         $mockResolver->setImmediateSuccessForType(RecordType::A, ['93.184.216.34']);
@@ -335,18 +348,20 @@ describe('HappyEyeBallsConnector', function () {
 
         try {
             $promise->wait();
-            throw new \Exception('Expected ConnectionFailedException');
+
+            throw new Exception('Expected ConnectionFailedException');
         } catch (ConnectionFailedException $e) {
             expect($e->getMessage())
                 ->toContain('IPv6')
-                ->toContain('IPv4');
+                ->toContain('IPv4')
+            ;
         }
     });
 
     test('preserves URI components in connection attempts', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
         $connection = new MockConnection();
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, []);
@@ -361,13 +376,14 @@ describe('HappyEyeBallsConnector', function () {
             ->toContain('/path')
             ->toContain('key=value')
             ->toContain('hostname=example.com')
-            ->toContain('#fragment');
+            ->toContain('#fragment')
+        ;
     });
 
     test('wraps IPv6 addresses in brackets', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
         $connection = new MockConnection();
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, ['2606:2800:220:1::1']);
@@ -382,12 +398,12 @@ describe('HappyEyeBallsConnector', function () {
     test('multiple IPs shuffled for randomization', function () {
         $mockConnector = new MockConnectorWithFailureTracking();
         $mockResolver = new MockResolverWithTypes();
-        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver,false);
+        $connector = new HappyEyeBallsConnector($mockConnector, $mockResolver, false);
 
         $mockResolver->setImmediateSuccessForType(RecordType::AAAA, [
             '2606:2800:220:1::1',
             '2606:2800:220:1::2',
-            '2606:2800:220:1::3'
+            '2606:2800:220:1::3',
         ]);
         $mockResolver->setImmediateSuccessForType(RecordType::A, []);
 
@@ -410,7 +426,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1', '1.0.0.1'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -421,7 +438,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         expect($connection)
             ->toBeInstanceOf(ConnectionInterface::class)
             ->and($connection->isReadable())->toBeTrue()
-            ->and($connection->isWritable())->toBeTrue();
+            ->and($connection->isWritable())->toBeTrue()
+        ;
 
         $connection->close();
     });
@@ -430,7 +448,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['8.8.8.8', '8.8.4.4'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -441,7 +460,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         expect($connection)
             ->toBeInstanceOf(ConnectionInterface::class)
             ->and($connection->isReadable())->toBeTrue()
-            ->and($connection->isWritable())->toBeTrue();
+            ->and($connection->isWritable())->toBeTrue()
+        ;
 
         $connection->close();
     });
@@ -450,7 +470,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['2606:4700:4700::1111', '2606:4700:4700::1001'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -459,7 +480,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $connection = $promise->wait();
 
         expect($connection)
-            ->toBeInstanceOf(ConnectionInterface::class);
+            ->toBeInstanceOf(ConnectionInterface::class)
+        ;
 
         $remoteAddr = $connection->getRemoteAddress();
         expect($remoteAddr)->toContain('[');
@@ -471,7 +493,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -482,7 +505,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         expect($connection)
             ->toBeInstanceOf(ConnectionInterface::class)
             ->and($connection->isReadable())->toBeTrue()
-            ->and($connection->isWritable())->toBeTrue();
+            ->and($connection->isWritable())->toBeTrue()
+        ;
 
         $connection->close();
     });
@@ -491,21 +515,24 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://this-domain-definitely-does-not-exist-12345.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(ConnectionFailedException::class);
+        expect(fn () => $promise->wait())
+            ->toThrow(ConnectionFailedException::class)
+        ;
     });
 
     test('connects directly to IPv4 address without DNS', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1'])
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -514,7 +541,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $connection = $promise->wait();
 
         expect($connection)
-            ->toBeInstanceOf(ConnectionInterface::class);
+            ->toBeInstanceOf(ConnectionInterface::class)
+        ;
 
         $connection->close();
     });
@@ -522,7 +550,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
     test('connects directly to IPv6 address without DNS', function () {
         $resolver = Dns::new()
             ->withNameservers(['2606:4700:4700::1111'])
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -531,7 +560,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $connection = $promise->wait();
 
         expect($connection)
-            ->toBeInstanceOf(ConnectionInterface::class);
+            ->toBeInstanceOf(ConnectionInterface::class)
+        ;
 
         $connection->close();
     });
@@ -541,7 +571,8 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
             ->withNameservers(['1.1.1.1'])
             ->withTimeout(5.0)
             ->withCache()
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -561,22 +592,25 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
 
         $promise = $connector->connect('tcp://google.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(ConnectionFailedException::class);
+        expect(fn () => $promise->wait())
+            ->toThrow(ConnectionFailedException::class)
+        ;
     });
 
     test('cancellation works during active connection', function () {
         $resolver = Dns::new()
             ->withNameservers(['1.1.1.1'])
             ->withTimeout(5.0)
-            ->build();
+            ->build()
+        ;
 
         $tcpConnector = new TcpConnector([]);
         $connector = new HappyEyeBallsConnector($tcpConnector, $resolver);
@@ -590,7 +624,7 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         expect($promise->isCancelled())->toBeTrue();
     });
 })->skip(function () {
-    set_error_handler(fn() => true);
+    set_error_handler(fn () => true);
     $socket = @stream_socket_client('tcp://[2606:4700:4700::1111]:80', $errno, $errstr, 1);
     restore_error_handler();
 
@@ -598,5 +632,6 @@ describe('HappyEyeBallsConnector - Real Network Integration', function () {
         return 'IPv6 is not available in this environment';
     }
     fclose($socket);
+
     return false;
 })->skipOnCI();

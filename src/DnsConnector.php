@@ -27,7 +27,8 @@ final class DnsConnector implements ConnectorInterface
     public function __construct(
         private readonly ConnectorInterface $connector,
         private readonly ResolverInterface $resolver
-    ) {}
+    ) {
+    }
 
     /**
      * {@inheritdoc}
@@ -37,7 +38,7 @@ final class DnsConnector implements ConnectorInterface
         $original = $uri;
 
         // Parse URI - add scheme if missing
-        if (!str_contains($uri, '://')) {
+        if (! str_contains($uri, '://')) {
             $uri = 'tcp://' . $uri;
             $parts = parse_url($uri);
             if (isset($parts['scheme'])) {
@@ -48,7 +49,7 @@ final class DnsConnector implements ConnectorInterface
         }
 
         // Validate URI structure
-        if ($parts === false || !isset($parts['host'])) {
+        if ($parts === false || ! isset($parts['host'])) {
             return Promise::rejected(new InvalidUriException(
                 \sprintf('Given URI "%s" is invalid (EINVAL)', $original),
                 \defined('SOCKET_EINVAL') ? SOCKET_EINVAL : (\defined('PCNTL_EINVAL') ? PCNTL_EINVAL : 22)
@@ -113,8 +114,9 @@ final class DnsConnector implements ConnectorInterface
         );
 
         $promise->onCancel(function () use (&$dnsPromise, &$connectionPromise, &$resolved): void {
-            if (!$resolved) {
+            if (! $resolved) {
                 $dnsPromise->cancelChain();
+
                 return;
             }
 

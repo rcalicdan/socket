@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Hibla\Socket;
 
 use Hibla\Promise\Interfaces\PromiseInterface;
-use Hibla\Socket\Interfaces\ConnectorInterface;
 use Hibla\Socket\Interfaces\ConnectionInterface;
+use Hibla\Socket\Interfaces\ConnectorInterface;
 
 /**
  * A connector that enforces connections to a specific, pre-defined URI.
@@ -30,7 +30,8 @@ final readonly class FixedUriConnector implements ConnectorInterface
     public function __construct(
         private string $uri,
         private ConnectorInterface $connector,
-    ) {}
+    ) {
+    }
 
     /**
      * {@inheritdoc}

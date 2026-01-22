@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use Hibla\Promise\Exceptions\PromiseCancelledException;
 use Hibla\Socket\Exceptions\TimeoutException;
+use Hibla\Socket\TimeoutConnector;
 use Tests\Mocks\MockConnection;
 use Tests\Mocks\MockConnector;
-use Hibla\Socket\TimeoutConnector;
 
 describe('TimeoutConnector', function () {
     test('immediate successful connection', function () {
@@ -20,7 +20,8 @@ describe('TimeoutConnector', function () {
         $connection = $promise->wait();
 
         expect($connection)->toBe($expectedConnection)
-            ->and($mockConnector->connectCalled)->toBeTrue();
+            ->and($mockConnector->connectCalled)->toBeTrue()
+        ;
     });
 
     test('connection times out', function () {
@@ -31,8 +32,9 @@ describe('TimeoutConnector', function () {
 
         $promise = $timeoutConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(TimeoutException::class, 'Connection to tcp://example.com:80 timed out after 1.00 seconds');
+        expect(fn () => $promise->wait())
+            ->toThrow(TimeoutException::class, 'Connection to tcp://example.com:80 timed out after 1.00 seconds')
+        ;
     });
 
     test('timeout with custom duration', function () {
@@ -46,13 +48,15 @@ describe('TimeoutConnector', function () {
 
         try {
             $promise->wait();
+
             throw new Exception('Expected TimeoutException to be thrown');
         } catch (TimeoutException $e) {
             $elapsed = microtime(true) - $startTime;
 
             expect($e->getMessage())->toContain('timed out after 0.50 seconds')
                 ->and($elapsed)->toBeGreaterThanOrEqual(0.5)
-                ->and($elapsed)->toBeLessThan(0.7); // Allow some overhead
+                ->and($elapsed)->toBeLessThan(0.7) // Allow some overhead
+            ;
         }
     });
 
@@ -65,8 +69,9 @@ describe('TimeoutConnector', function () {
 
         $promise = $timeoutConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(RuntimeException::class, 'Connection refused');
+        expect(fn () => $promise->wait())
+            ->toThrow(RuntimeException::class, 'Connection refused')
+        ;
     });
 
     test('immediate connection failure', function () {
@@ -78,8 +83,9 @@ describe('TimeoutConnector', function () {
 
         $promise = $timeoutConnector->connect('tcp://invalid:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(RuntimeException::class, 'Invalid host');
+        expect(fn () => $promise->wait())
+            ->toThrow(RuntimeException::class, 'Invalid host')
+        ;
     });
 
     test('cancelling connection cleans up timer', function () {
@@ -94,8 +100,9 @@ describe('TimeoutConnector', function () {
 
         expect($promise->isCancelled())->toBeTrue();
 
-        expect(fn() => $promise->wait())
-            ->toThrow(PromiseCancelledException::class);
+        expect(fn () => $promise->wait())
+            ->toThrow(PromiseCancelledException::class)
+        ;
     });
 
     test('multiple simultaneous connections', function () {
@@ -118,7 +125,8 @@ describe('TimeoutConnector', function () {
         $result2 = $promise2->wait();
 
         expect($result1)->toBe($connection1)
-            ->and($result2)->toBe($connection2);
+            ->and($result2)->toBe($connection2)
+        ;
     });
 
     test('connection succeeds just before timeout', function () {
@@ -144,6 +152,7 @@ describe('TimeoutConnector', function () {
 
         try {
             $promise->wait();
+
             throw new Exception('Expected TimeoutException to be thrown');
         } catch (TimeoutException $e) {
             $expectedCode = defined('SOCKET_ETIMEDOUT') ? SOCKET_ETIMEDOUT : 110;
@@ -169,7 +178,8 @@ describe('TimeoutConnector', function () {
             $result = $promise->wait();
 
             expect($result)->toBe($connection)
-                ->and($mockConnector->lastUri)->toBe($uri);
+                ->and($mockConnector->lastUri)->toBe($uri)
+            ;
         }
     });
 
@@ -183,8 +193,10 @@ describe('TimeoutConnector', function () {
         $promise = $timeoutConnector->connect('tcp://example.com:80')
             ->then(function ($conn) {
                 expect($conn)->toBeInstanceOf(MockConnection::class);
+
                 return 'success';
-            });
+            })
+        ;
 
         $result = $promise->wait();
         expect($result)->toBe('success');
@@ -199,8 +211,10 @@ describe('TimeoutConnector', function () {
         $promise = $timeoutConnector->connect('tcp://example.com:80')
             ->catch(function ($error) {
                 expect($error)->toBeInstanceOf(TimeoutException::class);
+
                 return 'handled';
-            });
+            })
+        ;
 
         $result = $promise->wait();
         expect($result)->toBe('handled');
@@ -214,8 +228,9 @@ describe('TimeoutConnector', function () {
 
         $promise = $timeoutConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(TimeoutException::class);
+        expect(fn () => $promise->wait())
+            ->toThrow(TimeoutException::class)
+        ;
 
         expect($mockConnector->connectCalled)->toBeTrue();
     });
@@ -233,7 +248,8 @@ describe('TimeoutConnector', function () {
         $result = $promise->wait();
 
         expect($result->getRemoteAddress())->toBe($remoteAddr)
-            ->and($result->getLocalAddress())->toBe($localAddr);
+            ->and($result->getLocalAddress())->toBe($localAddr)
+        ;
     });
 
     test('very short timeout', function () {
@@ -244,8 +260,9 @@ describe('TimeoutConnector', function () {
 
         $promise = $timeoutConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(TimeoutException::class, 'timed out after 0.10 seconds');
+        expect(fn () => $promise->wait())
+            ->toThrow(TimeoutException::class, 'timed out after 0.10 seconds')
+        ;
     });
 
     test('zero timeout immediately times out', function () {
@@ -256,8 +273,9 @@ describe('TimeoutConnector', function () {
 
         $promise = $timeoutConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(TimeoutException::class);
+        expect(fn () => $promise->wait())
+            ->toThrow(TimeoutException::class)
+        ;
     });
 
     test('connection state remains valid after successful connection', function () {
@@ -273,7 +291,8 @@ describe('TimeoutConnector', function () {
 
         expect($result->isReadable())->toBeTrue()
             ->and($result->isWritable())->toBeTrue()
-            ->and($result->isClosed())->toBeFalse();
+            ->and($result->isClosed())->toBeFalse()
+        ;
     });
 
     test('finally handler executes on timeout', function () {
@@ -286,7 +305,8 @@ describe('TimeoutConnector', function () {
         $promise = $timeoutConnector->connect('tcp://example.com:80')
             ->finally(function () use (&$finallyCalled) {
                 $finallyCalled = true;
-            });
+            })
+        ;
 
         try {
             $promise->wait();
@@ -308,7 +328,8 @@ describe('TimeoutConnector', function () {
         $promise = $timeoutConnector->connect('tcp://example.com:80')
             ->finally(function () use (&$finallyCalled) {
                 $finallyCalled = true;
-            });
+            })
+        ;
 
         $promise->wait();
 
@@ -331,7 +352,8 @@ describe('TimeoutConnector', function () {
         $result2 = $timeoutConnector->connect('tcp://server2:80')->wait();
 
         expect($result1)->toBe($connection1)
-            ->and($result2)->toBe($connection2);
+            ->and($result2)->toBe($connection2)
+        ;
     });
 
     test('timeout with delayed failure', function () {
@@ -343,8 +365,9 @@ describe('TimeoutConnector', function () {
 
         $promise = $timeoutConnector->connect('tcp://example.com:80');
 
-        expect(fn() => $promise->wait())
-            ->toThrow(RuntimeException::class, 'Delayed error');
+        expect(fn () => $promise->wait())
+            ->toThrow(RuntimeException::class, 'Delayed error')
+        ;
     });
 
     test('connection can be written to after successful timeout connection', function () {
@@ -360,7 +383,8 @@ describe('TimeoutConnector', function () {
         $writeSuccess = $result->write('test data');
 
         expect($writeSuccess)->toBeTrue()
-            ->and($result->isWritable())->toBeTrue();
+            ->and($result->isWritable())->toBeTrue()
+        ;
     });
 
     test('connection can be closed after successful timeout connection', function () {
